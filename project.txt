@@ -1,0 +1,48 @@
+
+Apps Square Task# Mini Restaurant Reservation System - Requirement Document
+1. Introduction
+The Mini Restaurant Reservation System is a platform that allows customers to reserve tables, view
+menu items, place orders, and generate invoices. The system also includes features such as table
+availability checks, waiting lists, and meal availability management.
+2. Functional Requirements
+2.1 Table Management
+- Customers can check table availability for a specific date, time, and number of guests.
+- Customers can reserve a table for a specific date and time.
+- If tables are fully booked, customers can join a waiting list.
+2.2 Menu Management
+- The system should display a list of all available menu items.
+- Each menu item should have a limited daily availability.
+- Orders must not exceed the daily availability limit of menu items.
+2.3 Order Management
+- Customers can place orders for specific menu items.
+- Discounts should be applied to menu items where applicable.
+- The system should calculate the total cost of an order, including discounts.
+2.4 Payment and Invoicing
+- The system should support two payment options:
+- **Option 1:** Add 14% taxes and a 20% service charge.
+- **Option 2:** Add a 15% service charge only.
+1- The system should generate an invoice for each order after payment is completed.
+2.5 Waiting List Management
+- The system should maintain a waiting list for customers when tables are fully booked.
+- The availability count of a meal should decrement when an order is placed.
+- The system should support standard data formats (e.g., JSON) for all requests and responses.
+3. Business Rules
+3.1 Table Reservation
+- A table can only be reserved if it is available for the requested date and time.
+- A table reservation must include the customer’s details, table ID, and reservation time slot.
+3.2 Order Placement
+- An order must include at least one menu item.
+- The total cost of an order must reflect discounts on menu items.
+3.3 Payment
+- Payment must be processed before an invoice is generated.
+- The invoice must reflect the selected payment option (including applicable taxes and service charges).
+3.4 Meal Availability
+- The availability count of a meal should not go below zero.
+- The availability count of all meals should reset at the start of each day.
+4. Assumptions
+- Customers will provide their details (name, phone) when making a reservation or placing an order.
+- The restaurant operates on a fixed schedule with defined meal availability per day.
+2- The system will be accessible via web or mobile application with an intuitive UI for customers and
+administrators.
+For any inquiries or explanation, please don’t hesitate to contact hr@appssquare.com
+3

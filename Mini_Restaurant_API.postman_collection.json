@@ -1,0 +1,1280 @@
+{
+	"info": {
+		"name": "Mini Restaurant Reservation System API v2.0",
+		"description": "Complete API collection for Mini Restaurant Reservation System - Apps Square Task\n\n🚀 NEW in v2.0: Advanced Payment System with Multiple Gateways\n\nThis collection includes all endpoints with sample data for testing:\n- Authentication (Register, Login, Logout)\n- Menu Management\n- Table Availability & Reservations\n- Order Management\n- 💳 Advanced Payment Processing (PayPal, Stripe, Paymob + InstaPay)\n- Waiting List Management\n- 🔄 Payment Callbacks & Webhooks\n- ✅ Payment Verification\n\nMake sure to:\n1. Start with Authentication to get the token\n2. Update the {{token}} variable after login\n3. Follow the testing sequence in order\n4. Set up payment gateway credentials in environment variables\n\n📚 For detailed payment system documentation, see: PAYMENT_SYSTEM_COMPLETE_GUIDE.md",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8000/api",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "tableId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "orderId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "reservationId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "invoiceId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "transactionId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "paymentGateway",
+			"value": "stripe",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "🔐 Authentication",
+			"item": [
+				{
+					"name": "Register New User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set('token', response.token);",
+									"    pm.collectionVariables.set('userId', response.user.id);",
+									"    pm.test('✅ User registered successfully', () => {",
+									"        pm.expect(response.user.name).to.eql('Ahmed Test User');",
+									"        pm.expect(response.token).to.be.a('string');",
+									"    });",
+									"    console.log('🔑 Token saved:', response.token.substring(0, 20) + '...');",
+									"    console.log('👤 User ID:', response.user.id);",
+									"} else {",
+									"    pm.test('❌ Registration failed', () => {",
+									"        pm.expect.fail('Registration should succeed');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Ahmed Test User\",\n  \"email\": \"ahmed@test.com\",\n  \"password\": \"password123\",\n  \"password_confirmation\": \"password123\",\n  \"phone\": \"+20123456789\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						},
+						"description": "Register a new user account. This will automatically save the token for subsequent requests."
+					}
+				},
+				{
+					"name": "Login User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set('token', response.token);",
+									"    pm.collectionVariables.set('userId', response.user.id);",
+									"    pm.test('✅ User logged in successfully', () => {",
+									"        pm.expect(response.user.email).to.eql('ahmed@test.com');",
+									"        pm.expect(response.token).to.be.a('string');",
+									"    });",
+									"    console.log('🔑 Token updated:', response.token.substring(0, 20) + '...');",
+									"} else {",
+									"    pm.test('❌ Login failed', () => {",
+									"        pm.expect.fail('Login should succeed');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"ahmed@test.com\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						},
+						"description": "Login with existing user credentials."
+					}
+				},
+				{
+					"name": "Get Current User",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/auth/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"me"
+							]
+						},
+						"description": "Get current authenticated user information."
+					}
+				},
+				{
+					"name": "Logout User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/auth/logout",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"logout"
+							]
+						},
+						"description": "Logout current user and invalidate token."
+					}
+				}
+			],
+			"description": "User authentication endpoints including register, login, logout, and profile."
+		},
+		{
+			"name": "🍽️ Menu Management",
+			"item": [
+				{
+					"name": "Get Menu Items",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('✅ Menu items retrieved successfully', () => {",
+									"    pm.response.to.have.status(200);",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.data).to.be.an('array');",
+									"    if (response.data.length > 0) {",
+									"        pm.expect(response.data[0]).to.have.property('name');",
+									"        pm.expect(response.data[0]).to.have.property('price');",
+									"        pm.expect(response.data[0]).to.have.property('daily_available_quantity');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/v1/menu",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"v1",
+								"menu"
+							]
+						},
+						"description": "Get all available menu items with their prices and availability."
+					}
+				}
+			],
+			"description": "Menu management endpoints for viewing available items."
+		},
+		{
+			"name": "🪑 Tables & Reservations",
+			"item": [
+				{
+					"name": "Get Available Tables",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/v1/tables",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"v1",
+								"tables"
+							]
+						},
+						"description": "Get list of all tables."
+					}
+				},
+				{
+					"name": "Check Table Availability",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/v1/tables/availability?date=2024-12-25&time=19:00&guests=4",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"v1",
+								"tables",
+								"availability"
+							],
+							"query": [
+								{
+									"key": "date",
+									"value": "2024-12-25"
+								},
+								{
+									"key": "time",
+									"value": "19:00"
+								},
+								{
+									"key": "guests",
+									"value": "4"
+								}
+							]
+						},
+						"description": "Check table availability for specific date, time, and number of guests."
+					}
+				},
+				{
+					"name": "Make Reservation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set('reservationId', response.data.id);",
+									"    pm.test('✅ Reservation created successfully', () => {",
+									"        pm.expect(response.data).to.have.property('id');",
+									"        pm.expect(response.data.status).to.eql('confirmed');",
+									"    });",
+									"    console.log('🎯 Reservation ID saved:', response.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"table_id\": 1,\n  \"reservation_date\": \"2024-12-25\",\n  \"reservation_time\": \"19:00\",\n  \"guests_count\": 4,\n  \"special_requests\": \"Window seat preferred\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/v1/reservations",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"v1",
+								"reservations"
+							]
+						},
+						"description": "Make a new table reservation."
+					}
+				},
+				{
+					"name": "Get My Reservations",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/v1/reservations",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"v1",
+								"reservations"
+							]
+						},
+						"description": "Get all reservations for the authenticated user."
+					}
+				}
+			],
+			"description": "Table management and reservation endpoints."
+		},
+		{
+			"name": "🛒 Order Management",
+			"item": [
+				{
+					"name": "Create New Order",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set('orderId', response.data.id);",
+									"    pm.test('✅ Order created successfully', () => {",
+									"        pm.expect(response.data).to.have.property('id');",
+									"        pm.expect(response.data.status).to.eql('pending');",
+									"        pm.expect(response.data.total_amount).to.be.above(0);",
+									"    });",
+									"    console.log('📦 Order ID saved:', response.data.id);",
+									"    console.log('💰 Total Amount:', response.data.total_amount);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"items\": [\n    {\n      \"menu_item_id\": 1,\n      \"quantity\": 2\n    },\n    {\n      \"menu_item_id\": 2,\n      \"quantity\": 1\n    }\n  ],\n  \"special_instructions\": \"Extra spicy, no onions\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/v1/orders",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"v1",
+								"orders"
+							]
+						},
+						"description": "Create a new order with menu items."
+					}
+				},
+				{
+					"name": "Get My Orders",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/v1/orders",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"v1",
+								"orders"
+							]
+						},
+						"description": "Get all orders for the authenticated user."
+					}
+				},
+				{
+					"name": "Get Order Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/v1/orders/{{orderId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"v1",
+								"orders",
+								"{{orderId}}"
+							]
+						},
+						"description": "Get detailed information about a specific order."
+					}
+				}
+			],
+			"description": "Order management endpoints for creating and viewing orders."
+		},
+		{
+			"name": "💳 Payment System v2.0",
+			"item": [
+				{
+					"name": "📋 Payment Information",
+					"item": [
+						{
+							"name": "Get Payment Methods",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('✅ Payment methods retrieved', () => {",
+											"    pm.response.to.have.status(200);",
+											"    const response = pm.response.json();",
+											"    pm.expect(response.data).to.be.an('array');",
+											"    pm.expect(response.data).to.have.lengthOf(2);",
+											"    pm.expect(response.data[0]).to.have.property('tax_rate');",
+											"    pm.expect(response.data[0]).to.have.property('service_charge_rate');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/v1/payment-methods",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v1",
+										"payment-methods"
+									]
+								},
+								"description": "Get available payment calculation methods:\n- Option 1: 14% taxes + 20% service charge\n- Option 2: 15% service charge only"
+							}
+						},
+						{
+							"name": "Get Payment Gateways",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('✅ Payment gateways retrieved', () => {",
+											"    pm.response.to.have.status(200);",
+											"    const response = pm.response.json();",
+											"    pm.expect(response.data).to.be.an('array');",
+											"    pm.expect(response.data).to.have.lengthOf(3);",
+											"    ",
+											"    const gateways = response.data.map(g => g.id);",
+											"    pm.expect(gateways).to.include.members(['paypal', 'stripe', 'paymob']);",
+											"    ",
+											"    const paymob = response.data.find(g => g.id === 'paymob');",
+											"    pm.expect(paymob.methods).to.be.an('array');",
+											"    pm.expect(paymob.methods.find(m => m.id === 'instapay')).to.exist;",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/v1/payment-gateways",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v1",
+										"payment-gateways"
+									]
+								},
+								"description": "Get available payment gateways:\n- PayPal (redirect)\n- Stripe (inline)\n- Paymob (iframe) with Card and InstaPay options"
+							}
+						}
+					],
+					"description": "Endpoints to get payment options and available gateways"
+				},
+				{
+					"name": "💰 Process Payments",
+					"item": [
+						{
+							"name": "Pay with Stripe",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"    const response = pm.response.json();",
+											"    pm.collectionVariables.set('invoiceId', response.data.invoice.id);",
+											"    pm.collectionVariables.set('transactionId', response.data.payment_result.transaction_id);",
+											"    pm.collectionVariables.set('paymentGateway', 'stripe');",
+											"    ",
+											"    pm.test('✅ Stripe payment initiated', () => {",
+											"        pm.expect(response.data.payment_result.success).to.be.true;",
+											"        pm.expect(response.data.payment_result.payment_method).to.eql('stripe');",
+											"        pm.expect(response.data.payment_result).to.have.property('client_secret');",
+											"    });",
+											"    ",
+											"    console.log('💳 Stripe Payment initiated');",
+											"    console.log('🔑 Client Secret:', response.data.payment_result.client_secret);",
+											"    console.log('📄 Invoice ID:', response.data.invoice.id);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"payment_option\": 1,\n  \"payment_gateway\": \"stripe\",\n  \"payment_data\": {\n    \"currency\": \"usd\"\n  }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/v1/orders/{{orderId}}/pay",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v1",
+										"orders",
+										"{{orderId}}",
+										"pay"
+									]
+								},
+								"description": "Process payment using Stripe gateway with credit/debit card."
+							}
+						},
+						{
+							"name": "Pay with PayPal",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"    const response = pm.response.json();",
+											"    pm.collectionVariables.set('invoiceId', response.data.invoice.id);",
+											"    pm.collectionVariables.set('transactionId', response.data.payment_result.transaction_id);",
+											"    pm.collectionVariables.set('paymentGateway', 'paypal');",
+											"    ",
+											"    pm.test('✅ PayPal payment initiated', () => {",
+											"        pm.expect(response.data.payment_result.success).to.be.true;",
+											"        pm.expect(response.data.payment_result.payment_method).to.eql('paypal');",
+											"        pm.expect(response.data.payment_result.redirect_required).to.be.true;",
+											"        pm.expect(response.data.next_action.type).to.eql('redirect');",
+											"    });",
+											"    ",
+											"    console.log('🅿️ PayPal Payment initiated');",
+											"    console.log('🔗 Approval URL:', response.data.next_action.url);",
+											"    console.log('📄 Invoice ID:', response.data.invoice.id);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"payment_option\": 2,\n  \"payment_gateway\": \"paypal\",\n  \"payment_data\": {\n    \"currency\": \"USD\"\n  }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/v1/orders/{{orderId}}/pay",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v1",
+										"orders",
+										"{{orderId}}",
+										"pay"
+									]
+								},
+								"description": "Process payment using PayPal gateway with redirect to PayPal."
+							}
+						},
+						{
+							"name": "Pay with Paymob (Card)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"    const response = pm.response.json();",
+											"    pm.collectionVariables.set('invoiceId', response.data.invoice.id);",
+											"    pm.collectionVariables.set('transactionId', response.data.payment_result.transaction_id);",
+											"    pm.collectionVariables.set('paymentGateway', 'paymob');",
+											"    ",
+											"    pm.test('✅ Paymob card payment initiated', () => {",
+											"        pm.expect(response.data.payment_result.success).to.be.true;",
+											"        pm.expect(response.data.payment_result.payment_method).to.eql('paymob');",
+											"        pm.expect(response.data.payment_result.redirect_required).to.be.true;",
+											"        pm.expect(response.data.next_action.type).to.eql('iframe');",
+											"    });",
+											"    ",
+											"    console.log('💳 Paymob Card Payment initiated');",
+											"    console.log('🔗 iFrame URL:', response.data.next_action.url);",
+											"    console.log('📄 Invoice ID:', response.data.invoice.id);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"payment_option\": 1,\n  \"payment_gateway\": \"paymob\",\n  \"payment_data\": {\n    \"payment_method\": \"card\",\n    \"currency\": \"EGP\"\n  }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/v1/orders/{{orderId}}/pay",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v1",
+										"orders",
+										"{{orderId}}",
+										"pay"
+									]
+								},
+								"description": "Process payment using Paymob gateway with credit/debit card through iFrame."
+							}
+						},
+						{
+							"name": "Pay with InstaPay (Paymob)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"    const response = pm.response.json();",
+											"    pm.collectionVariables.set('invoiceId', response.data.invoice.id);",
+											"    pm.collectionVariables.set('transactionId', response.data.payment_result.transaction_id);",
+											"    pm.collectionVariables.set('paymentGateway', 'paymob');",
+											"    ",
+											"    pm.test('✅ InstaPay payment initiated', () => {",
+											"        pm.expect(response.data.payment_result.success).to.be.true;",
+											"        pm.expect(response.data.payment_result.payment_method).to.eql('paymob');",
+											"        pm.expect(response.data.instapay_data).to.exist;",
+											"        pm.expect(response.data.instapay_data.mobile_number).to.eql('+201234567890');",
+											"    });",
+											"    ",
+											"    console.log('📱 InstaPay Payment initiated');",
+											"    console.log('📞 Mobile:', response.data.instapay_data.mobile_number);",
+											"    console.log('🔗 InstaPay URL:', response.data.instapay_data.instapay_url);",
+											"    console.log('📄 Invoice ID:', response.data.invoice.id);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"payment_option\": 1,\n  \"payment_gateway\": \"paymob\",\n  \"payment_data\": {\n    \"payment_method\": \"instapay\",\n    \"mobile_number\": \"+201234567890\",\n    \"currency\": \"EGP\"\n  }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/v1/orders/{{orderId}}/pay",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v1",
+										"orders",
+										"{{orderId}}",
+										"pay"
+									]
+								},
+								"description": "Process payment using InstaPay mobile wallet through Paymob gateway."
+							}
+						},
+						{
+							"name": "Pay with Legacy Method",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"    const response = pm.response.json();",
+											"    pm.collectionVariables.set('invoiceId', response.data.id);",
+											"    ",
+											"    pm.test('✅ Legacy payment processed', () => {",
+											"        pm.expect(response.data).to.have.property('final_amount');",
+											"        pm.expect(response.data.payment_option).to.eql(2);",
+											"    });",
+											"    ",
+											"    console.log('💰 Legacy Payment processed');",
+											"    console.log('📄 Invoice ID:', response.data.id);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"payment_option\": 2\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/v1/orders/{{orderId}}/pay-legacy",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v1",
+										"orders",
+										"{{orderId}}",
+										"pay-legacy"
+									]
+								},
+								"description": "Process payment using legacy method (direct payment without external gateway)."
+							}
+						}
+					],
+					"description": "Payment processing endpoints for different gateways"
+				},
+				{
+					"name": "📊 Payment Status & Invoices",
+					"item": [
+						{
+							"name": "Get Payment Status",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('✅ Payment status retrieved', () => {",
+											"    pm.response.to.have.status(200);",
+											"    const response = pm.response.json();",
+											"    pm.expect(response.data).to.have.property('order_status');",
+											"    pm.expect(response.data).to.have.property('payment_status');",
+											"    pm.expect(response.data).to.have.property('final_amount');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/v1/orders/{{orderId}}/payment-status",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v1",
+										"orders",
+										"{{orderId}}",
+										"payment-status"
+									]
+								},
+								"description": "Get current payment status for an order."
+							}
+						},
+						{
+							"name": "Get Invoice Details",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('✅ Invoice retrieved', () => {",
+											"    pm.response.to.have.status(200);",
+											"    const response = pm.response.json();",
+											"    pm.expect(response.data).to.have.property('final_amount');",
+											"    pm.expect(response.data).to.have.property('tax_amount');",
+											"    pm.expect(response.data).to.have.property('service_charge_amount');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/v1/invoices/{{invoiceId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v1",
+										"invoices",
+										"{{invoiceId}}"
+									]
+								},
+								"description": "Get detailed invoice information including all charges."
+							}
+						},
+						{
+							"name": "Verify Payment",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('✅ Payment verification completed', () => {",
+											"    pm.response.to.have.status(200);",
+											"    const response = pm.response.json();",
+											"    pm.expect(response.data).to.have.property('verified');",
+											"    pm.expect(response.data.payment_method).to.eql(pm.collectionVariables.get('paymentGateway'));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/v1/payment/{{paymentGateway}}/verify/{{transactionId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v1",
+										"payment",
+										"{{paymentGateway}}",
+										"verify",
+										"{{transactionId}}"
+									]
+								},
+								"description": "Verify payment status directly from the payment gateway API."
+							}
+						}
+					],
+					"description": "Payment status and invoice management endpoints"
+				},
+				{
+					"name": "🔄 Payment Callbacks (Simulation)",
+					"item": [
+						{
+							"name": "Simulate PayPal Success",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/payment/paypal/success?paymentId={{transactionId}}&PayerID=EXAMPLE_PAYER_ID",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"payment",
+										"paypal",
+										"success"
+									],
+									"query": [
+										{
+											"key": "paymentId",
+											"value": "{{transactionId}}"
+										},
+										{
+											"key": "PayerID",
+											"value": "EXAMPLE_PAYER_ID"
+										}
+									]
+								},
+								"description": "Simulate PayPal success callback (normally called by PayPal)."
+							}
+						},
+						{
+							"name": "Simulate PayPal Cancel",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/payment/paypal/cancel?paymentId={{transactionId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"payment",
+										"paypal",
+										"cancel"
+									],
+									"query": [
+										{
+											"key": "paymentId",
+											"value": "{{transactionId}}"
+										}
+									]
+								},
+								"description": "Simulate PayPal cancel callback (normally called by PayPal)."
+							}
+						},
+						{
+							"name": "Simulate Paymob Callback",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"success\": \"true\",\n  \"pending\": \"false\",\n  \"amount_cents\": 13400,\n  \"order\": {\n    \"id\": \"{{transactionId}}\"\n  },\n  \"id\": \"paymob_transaction_123\",\n  \"hmac\": \"example_hmac_signature\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/payment/paymob/callback",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"payment",
+										"paymob",
+										"callback"
+									]
+								},
+								"description": "Simulate Paymob callback (normally called by Paymob)."
+							}
+						}
+					],
+					"description": "Simulation endpoints for payment callbacks (normally called by external services)"
+				}
+			],
+			"description": "🚀 NEW: Advanced Payment System v2.0 with multiple gateways and InstaPay support"
+		},
+		{
+			"name": "📋 Waiting List",
+			"item": [
+				{
+					"name": "Join Waiting List",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"preferred_date\": \"2024-12-25\",\n  \"preferred_time\": \"19:00\",\n  \"guests_count\": 4,\n  \"contact_preference\": \"phone\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/v1/waiting-list",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"v1",
+								"waiting-list"
+							]
+						},
+						"description": "Join the waiting list when tables are full."
+					}
+				},
+				{
+					"name": "Get Waiting List Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/v1/waiting-list",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"v1",
+								"waiting-list"
+							]
+						},
+						"description": "Get current position and status in waiting list."
+					}
+				}
+			],
+			"description": "Waiting list management when tables are fully booked."
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Auto-set content type for requests with body",
+					"if (pm.request.body && pm.request.body.mode === 'raw') {",
+					"    pm.request.headers.add({",
+					"        key: 'Content-Type',",
+					"        value: 'application/json'",
+					"    });",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global response time test",
+					"pm.test('⚡ Response time is acceptable', () => {",
+					"    pm.expect(pm.response.responseTime).to.be.below(5000);",
+					"});",
+					"",
+					"// Global status code check",
+					"if (pm.response.code >= 400) {",
+					"    console.log('❌ Error Response:', pm.response.json());",
+					"}"
+				]
+			}
+		}
+	]
+}

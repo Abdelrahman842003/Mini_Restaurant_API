@@ -1,0 +1,554 @@
+# Mini Restaurant Reservation System API v2.0
+
+###
+# group: 🔐 Authentication
+# @name Register New User
+# Register a new user account. This will automatically save the token for subsequent requests.
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Ahmed Test User",
+  "email": "ahmed@test.com",
+  "password": "password123",
+  "password_confirmation": "password123",
+  "phone": "+20123456789"
+}
+
+> {%
+    // TODO: migrate to HTTP Client Response handler API
+    // if (pm.response.code === 201) {
+    //     const response = pm.response.json();
+    //     pm.collectionVariables.set('token', response.token);
+    //     pm.collectionVariables.set('userId', response.user.id);
+    //     pm.test('✅ User registered successfully', () => {
+    //         pm.expect(response.user.name).to.eql('Ahmed Test User');
+    //         pm.expect(response.token).to.be.a('string');
+    //     });
+    //     console.log('🔑 Token saved:', response.token.substring(0, 20) + '...');
+    //     console.log('👤 User ID:', response.user.id);
+    // } else {
+    //     pm.test('❌ Registration failed', () => {
+    //         pm.expect.fail('Registration should succeed');
+    //     });
+    // }
+%}
+
+###
+# group: 🔐 Authentication
+# @name Login User
+# Login with existing user credentials.
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "ahmed@test.com",
+  "password": "password123"
+}
+
+> {%
+    // TODO: migrate to HTTP Client Response handler API
+    // if (pm.response.code === 200) {
+    //     const response = pm.response.json();
+    //     pm.collectionVariables.set('token', response.token);
+    //     pm.collectionVariables.set('userId', response.user.id);
+    //     pm.test('✅ User logged in successfully', () => {
+    //         pm.expect(response.user.email).to.eql('ahmed@test.com');
+    //         pm.expect(response.token).to.be.a('string');
+    //     });
+    //     console.log('🔑 Token updated:', response.token.substring(0, 20) + '...');
+    // } else {
+    //     pm.test('❌ Login failed', () => {
+    //         pm.expect.fail('Login should succeed');
+    //     });
+    // }
+%}
+
+###
+# group: 🔐 Authentication
+# @name Get Current User
+# Get current authenticated user information.
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+# group: 🔐 Authentication
+# @name Logout User
+# Logout current user and invalidate token.
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+# group: 🍽️ Menu Management
+# @name Get Menu Items
+# Get all available menu items with their prices and availability.
+GET {{baseUrl}}/v1/menu
+Accept: application/json
+
+> {%
+    // TODO: migrate to HTTP Client Response handler API
+    // pm.test('✅ Menu items retrieved successfully', () => {
+    //     pm.response.to.have.status(200);
+    //     const response = pm.response.json();
+    //     pm.expect(response.data).to.be.an('array');
+    //     if (response.data.length > 0) {
+    //         pm.expect(response.data[0]).to.have.property('name');
+    //         pm.expect(response.data[0]).to.have.property('price');
+    //         pm.expect(response.data[0]).to.have.property('daily_available_quantity');
+    //     }
+    // });
+%}
+
+###
+# group: 🪑 Tables & Reservations
+# @name Get Available Tables
+# Get list of all tables.
+GET {{baseUrl}}/v1/tables
+Accept: application/json
+
+###
+# group: 🪑 Tables & Reservations
+# @name Check Table Availability
+# Check table availability for specific date, time, and number of guests.
+GET {{baseUrl}}/v1/tables/availability?
+    date=2024-12-25&
+    time=19:00&
+    guests=4
+Accept: application/json
+
+###
+# group: 🪑 Tables & Reservations
+# @name Make Reservation
+# Make a new table reservation.
+POST {{baseUrl}}/v1/reservations
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "table_id": 1,
+  "reservation_date": "2024-12-25",
+  "reservation_time": "19:00",
+  "guests_count": 4,
+  "special_requests": "Window seat preferred"
+}
+
+> {%
+    // TODO: migrate to HTTP Client Response handler API
+    // if (pm.response.code === 201) {
+    //     const response = pm.response.json();
+    //     pm.collectionVariables.set('reservationId', response.data.id);
+    //     pm.test('✅ Reservation created successfully', () => {
+    //         pm.expect(response.data).to.have.property('id');
+    //         pm.expect(response.data.status).to.eql('confirmed');
+    //     });
+    //     console.log('🎯 Reservation ID saved:', response.data.id);
+    // }
+%}
+
+###
+# group: 🪑 Tables & Reservations
+# @name Get My Reservations
+# Get all reservations for the authenticated user.
+GET {{baseUrl}}/v1/reservations
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+# group: 🛒 Order Management
+# @name Create New Order
+# Create a new order with menu items.
+POST {{baseUrl}}/v1/orders
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "menu_item_id": 1,
+      "quantity": 2
+    },
+    {
+      "menu_item_id": 2,
+      "quantity": 1
+    }
+  ],
+  "special_instructions": "Extra spicy, no onions"
+}
+
+> {%
+    // TODO: migrate to HTTP Client Response handler API
+    // if (pm.response.code === 201) {
+    //     const response = pm.response.json();
+    //     pm.collectionVariables.set('orderId', response.data.id);
+    //     pm.test('✅ Order created successfully', () => {
+    //         pm.expect(response.data).to.have.property('id');
+    //         pm.expect(response.data.status).to.eql('pending');
+    //         pm.expect(response.data.total_amount).to.be.above(0);
+    //     });
+    //     console.log('📦 Order ID saved:', response.data.id);
+    //     console.log('💰 Total Amount:', response.data.total_amount);
+    // }
+%}
+
+###
+# group: 🛒 Order Management
+# @name Get My Orders
+# Get all orders for the authenticated user.
+GET {{baseUrl}}/v1/orders
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+# group: 🛒 Order Management
+# @name Get Order Details
+# Get detailed information about a specific order.
+GET {{baseUrl}}/v1/orders/{{orderId}}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+# group: 💳 Payment System v2.0 / 📋 Payment Information
+# @name Get Payment Methods
+# Get available payment calculation methods:
+# - Option 1: 14% taxes + 20% service charge
+# - Option 2: 15% service charge only
+GET {{baseUrl}}/v1/payment-methods
+Authorization: Bearer {{token}}
+Accept: application/json
+
+> {%
+    // TODO: migrate to HTTP Client Response handler API
+    // pm.test('✅ Payment methods retrieved', () => {
+    //     pm.response.to.have.status(200);
+    //     const response = pm.response.json();
+    //     pm.expect(response.data).to.be.an('array');
+    //     pm.expect(response.data).to.have.lengthOf(2);
+    //     pm.expect(response.data[0]).to.have.property('tax_rate');
+    //     pm.expect(response.data[0]).to.have.property('service_charge_rate');
+    // });
+%}
+
+###
+# group: 💳 Payment System v2.0 / 📋 Payment Information
+# @name Get Payment Gateways
+# Get available payment gateways:
+# - PayPal (redirect)
+# - Stripe (inline)
+# - Paymob (iframe) with Card and InstaPay options
+GET {{baseUrl}}/v1/payment-gateways
+Authorization: Bearer {{token}}
+Accept: application/json
+
+> {%
+    // TODO: migrate to HTTP Client Response handler API
+    // pm.test('✅ Payment gateways retrieved', () => {
+    //     pm.response.to.have.status(200);
+    //     const response = pm.response.json();
+    //     pm.expect(response.data).to.be.an('array');
+    //     pm.expect(response.data).to.have.lengthOf(3);
+    //     
+    //     const gateways = response.data.map(g => g.id);
+    //     pm.expect(gateways).to.include.members(['paypal', 'stripe', 'paymob']);
+    //     
+    //     const paymob = response.data.find(g => g.id === 'paymob');
+    //     pm.expect(paymob.methods).to.be.an('array');
+    //     pm.expect(paymob.methods.find(m => m.id === 'instapay')).to.exist;
+    // });
+%}
+
+###
+# group: 💳 Payment System v2.0 / 💰 Process Payments
+# @name Pay with Stripe
+# Process payment using Stripe gateway with credit/debit card.
+POST {{baseUrl}}/v1/orders/{{orderId}}/pay
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "payment_option": 1,
+  "payment_gateway": "stripe",
+  "payment_data": {
+    "currency": "usd"
+  }
+}
+
+> {%
+    // TODO: migrate to HTTP Client Response handler API
+    // if (pm.response.code === 201) {
+    //     const response = pm.response.json();
+    //     pm.collectionVariables.set('invoiceId', response.data.invoice.id);
+    //     pm.collectionVariables.set('transactionId', response.data.payment_result.transaction_id);
+    //     pm.collectionVariables.set('paymentGateway', 'stripe');
+    //     
+    //     pm.test('✅ Stripe payment initiated', () => {
+    //         pm.expect(response.data.payment_result.success).to.be.true;
+    //         pm.expect(response.data.payment_result.payment_method).to.eql('stripe');
+    //         pm.expect(response.data.payment_result).to.have.property('client_secret');
+    //     });
+    //     
+    //     console.log('💳 Stripe Payment initiated');
+    //     console.log('🔑 Client Secret:', response.data.payment_result.client_secret);
+    //     console.log('📄 Invoice ID:', response.data.invoice.id);
+    // }
+%}
+
+###
+# group: 💳 Payment System v2.0 / 💰 Process Payments
+# @name Pay with PayPal
+# Process payment using PayPal gateway with redirect to PayPal.
+POST {{baseUrl}}/v1/orders/{{orderId}}/pay
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "payment_option": 2,
+  "payment_gateway": "paypal",
+  "payment_data": {
+    "currency": "USD"
+  }
+}
+
+> {%
+    // TODO: migrate to HTTP Client Response handler API
+    // if (pm.response.code === 201) {
+    //     const response = pm.response.json();
+    //     pm.collectionVariables.set('invoiceId', response.data.invoice.id);
+    //     pm.collectionVariables.set('transactionId', response.data.payment_result.transaction_id);
+    //     pm.collectionVariables.set('paymentGateway', 'paypal');
+    //     
+    //     pm.test('✅ PayPal payment initiated', () => {
+    //         pm.expect(response.data.payment_result.success).to.be.true;
+    //         pm.expect(response.data.payment_result.payment_method).to.eql('paypal');
+    //         pm.expect(response.data.payment_result.redirect_required).to.be.true;
+    //         pm.expect(response.data.next_action.type).to.eql('redirect');
+    //     });
+    //     
+    //     console.log('🅿️ PayPal Payment initiated');
+    //     console.log('🔗 Approval URL:', response.data.next_action.url);
+    //     console.log('📄 Invoice ID:', response.data.invoice.id);
+    // }
+%}
+
+###
+# group: 💳 Payment System v2.0 / 💰 Process Payments
+# @name Pay with Paymob (Card)
+# Process payment using Paymob gateway with credit/debit card through iFrame.
+POST {{baseUrl}}/v1/orders/{{orderId}}/pay
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "payment_option": 1,
+  "payment_gateway": "paymob",
+  "payment_data": {
+    "payment_method": "card",
+    "currency": "EGP"
+  }
+}
+
+> {%
+    // TODO: migrate to HTTP Client Response handler API
+    // if (pm.response.code === 201) {
+    //     const response = pm.response.json();
+    //     pm.collectionVariables.set('invoiceId', response.data.invoice.id);
+    //     pm.collectionVariables.set('transactionId', response.data.payment_result.transaction_id);
+    //     pm.collectionVariables.set('paymentGateway', 'paymob');
+    //     
+    //     pm.test('✅ Paymob card payment initiated', () => {
+    //         pm.expect(response.data.payment_result.success).to.be.true;
+    //         pm.expect(response.data.payment_result.payment_method).to.eql('paymob');
+    //         pm.expect(response.data.payment_result.redirect_required).to.be.true;
+    //         pm.expect(response.data.next_action.type).to.eql('iframe');
+    //     });
+    //     
+    //     console.log('💳 Paymob Card Payment initiated');
+    //     console.log('🔗 iFrame URL:', response.data.next_action.url);
+    //     console.log('📄 Invoice ID:', response.data.invoice.id);
+    // }
+%}
+
+###
+# group: 💳 Payment System v2.0 / 💰 Process Payments
+# @name Pay with InstaPay (Paymob)
+# Process payment using InstaPay mobile wallet through Paymob gateway.
+POST {{baseUrl}}/v1/orders/{{orderId}}/pay
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "payment_option": 1,
+  "payment_gateway": "paymob",
+  "payment_data": {
+    "payment_method": "instapay",
+    "mobile_number": "+201234567890",
+    "currency": "EGP"
+  }
+}
+
+> {%
+    // TODO: migrate to HTTP Client Response handler API
+    // if (pm.response.code === 201) {
+    //     const response = pm.response.json();
+    //     pm.collectionVariables.set('invoiceId', response.data.invoice.id);
+    //     pm.collectionVariables.set('transactionId', response.data.payment_result.transaction_id);
+    //     pm.collectionVariables.set('paymentGateway', 'paymob');
+    //     
+    //     pm.test('✅ InstaPay payment initiated', () => {
+    //         pm.expect(response.data.payment_result.success).to.be.true;
+    //         pm.expect(response.data.payment_result.payment_method).to.eql('paymob');
+    //         pm.expect(response.data.instapay_data).to.exist;
+    //         pm.expect(response.data.instapay_data.mobile_number).to.eql('+201234567890');
+    //     });
+    //     
+    //     console.log('📱 InstaPay Payment initiated');
+    //     console.log('📞 Mobile:', response.data.instapay_data.mobile_number);
+    //     console.log('🔗 InstaPay URL:', response.data.instapay_data.instapay_url);
+    //     console.log('📄 Invoice ID:', response.data.invoice.id);
+    // }
+%}
+
+###
+# group: 💳 Payment System v2.0 / 💰 Process Payments
+# @name Pay with Legacy Method
+# Process payment using legacy method (direct payment without external gateway).
+POST {{baseUrl}}/v1/orders/{{orderId}}/pay-legacy
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "payment_option": 2
+}
+
+> {%
+    // TODO: migrate to HTTP Client Response handler API
+    // if (pm.response.code === 201) {
+    //     const response = pm.response.json();
+    //     pm.collectionVariables.set('invoiceId', response.data.id);
+    //     
+    //     pm.test('✅ Legacy payment processed', () => {
+    //         pm.expect(response.data).to.have.property('final_amount');
+    //         pm.expect(response.data.payment_option).to.eql(2);
+    //     });
+    //     
+    //     console.log('💰 Legacy Payment processed');
+    //     console.log('📄 Invoice ID:', response.data.id);
+    // }
+%}
+
+###
+# group: 💳 Payment System v2.0 / 📊 Payment Status & Invoices
+# @name Get Payment Status
+# Get current payment status for an order.
+GET {{baseUrl}}/v1/orders/{{orderId}}/payment-status
+Authorization: Bearer {{token}}
+Accept: application/json
+
+> {%
+    // TODO: migrate to HTTP Client Response handler API
+    // pm.test('✅ Payment status retrieved', () => {
+    //     pm.response.to.have.status(200);
+    //     const response = pm.response.json();
+    //     pm.expect(response.data).to.have.property('order_status');
+    //     pm.expect(response.data).to.have.property('payment_status');
+    //     pm.expect(response.data).to.have.property('final_amount');
+    // });
+%}
+
+###
+# group: 💳 Payment System v2.0 / 📊 Payment Status & Invoices
+# @name Get Invoice Details
+# Get detailed invoice information including all charges.
+GET {{baseUrl}}/v1/invoices/{{invoiceId}}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+> {%
+    // TODO: migrate to HTTP Client Response handler API
+    // pm.test('✅ Invoice retrieved', () => {
+    //     pm.response.to.have.status(200);
+    //     const response = pm.response.json();
+    //     pm.expect(response.data).to.have.property('final_amount');
+    //     pm.expect(response.data).to.have.property('tax_amount');
+    //     pm.expect(response.data).to.have.property('service_charge_amount');
+    // });
+%}
+
+###
+# group: 💳 Payment System v2.0 / 📊 Payment Status & Invoices
+# @name Verify Payment
+# Verify payment status directly from the payment gateway API.
+GET {{baseUrl}}/v1/payment/{{paymentGateway}}/verify/{{transactionId}}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+> {%
+    // TODO: migrate to HTTP Client Response handler API
+    // pm.test('✅ Payment verification completed', () => {
+    //     pm.response.to.have.status(200);
+    //     const response = pm.response.json();
+    //     pm.expect(response.data).to.have.property('verified');
+    //     pm.expect(response.data.payment_method).to.eql(pm.collectionVariables.get('paymentGateway'));
+    // });
+%}
+
+###
+# group: 💳 Payment System v2.0 / 🔄 Payment Callbacks (Simulation)
+# @name Simulate PayPal Success
+# Simulate PayPal success callback (normally called by PayPal).
+GET {{baseUrl}}/payment/paypal/success?
+    paymentId={{transactionId}}&
+    PayerID=EXAMPLE_PAYER_ID
+Accept: application/json
+
+###
+# group: 💳 Payment System v2.0 / 🔄 Payment Callbacks (Simulation)
+# @name Simulate PayPal Cancel
+# Simulate PayPal cancel callback (normally called by PayPal).
+GET {{baseUrl}}/payment/paypal/cancel?
+    paymentId={{transactionId}}
+Accept: application/json
+
+###
+# group: 💳 Payment System v2.0 / 🔄 Payment Callbacks (Simulation)
+# @name Simulate Paymob Callback
+# Simulate Paymob callback (normally called by Paymob).
+POST {{baseUrl}}/payment/paymob/callback
+Content-Type: application/json
+
+{
+  "success": "true",
+  "pending": "false",
+  "amount_cents": 13400,
+  "order": {
+    "id": "{{transactionId}}"
+  },
+  "id": "paymob_transaction_123",
+  "hmac": "example_hmac_signature"
+}
+
+###
+# group: 📋 Waiting List
+# @name Join Waiting List
+# Join the waiting list when tables are full.
+POST {{baseUrl}}/v1/waiting-list
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "preferred_date": "2024-12-25",
+  "preferred_time": "19:00",
+  "guests_count": 4,
+  "contact_preference": "phone"
+}
+
+###
+# group: 📋 Waiting List
+# @name Get Waiting List Status
+# Get current position and status in waiting list.
+GET {{baseUrl}}/v1/waiting-list
+Authorization: Bearer {{token}}
+Accept: application/json

@@ -1,0 +1,32 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\Table;
+use Illuminate\Database\Seeder;
+
+class TableSeeder extends Seeder
+{
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
+    {
+        $tables = [
+            ['capacity' => 2],
+            ['capacity' => 2],
+            ['capacity' => 4],
+            ['capacity' => 4],
+            ['capacity' => 4],
+            ['capacity' => 6],
+            ['capacity' => 6],
+            ['capacity' => 8],
+            ['capacity' => 8],
+            ['capacity' => 10],
+        ];
+
+        foreach ($tables as $table) {
+            Table::create($table);
+        }
+    }
+}

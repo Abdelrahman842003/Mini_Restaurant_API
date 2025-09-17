@@ -12,6 +12,7 @@ return new class extends Migration {
             $table->enum('status', ['pending', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled', 'paid'])->default('pending');
             $table->decimal('total_amount', 10, 2);
             $table->text('notes')->nullable();
+            $table->text('special_instructions')->nullable();
             $table->timestamps();
 
             // Add indexes for performance

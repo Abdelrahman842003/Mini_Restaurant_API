@@ -17,7 +17,9 @@ class TableFactory extends Factory
     public function definition(): array
     {
         return [
+            'table_number' => 'T' . str_pad(fake()->unique()->numberBetween(1, 999), 3, '0', STR_PAD_LEFT),
             'capacity' => fake()->numberBetween(2, 10),
+            'status' => fake()->randomElement(['available', 'occupied', 'reserved', 'maintenance']),
         ];
     }
 }

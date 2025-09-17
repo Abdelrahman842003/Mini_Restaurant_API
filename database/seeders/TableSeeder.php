@@ -13,16 +13,16 @@ class TableSeeder extends Seeder
     public function run(): void
     {
         $tables = [
-            ['capacity' => 2],
-            ['capacity' => 2],
-            ['capacity' => 4],
-            ['capacity' => 4],
-            ['capacity' => 4],
-            ['capacity' => 6],
-            ['capacity' => 6],
-            ['capacity' => 8],
-            ['capacity' => 8],
-            ['capacity' => 10],
+            ['table_number' => 'T001', 'capacity' => 2, 'status' => 'available'],
+            ['table_number' => 'T002', 'capacity' => 2, 'status' => 'available'],
+            ['table_number' => 'T003', 'capacity' => 4, 'status' => 'available'],
+            ['table_number' => 'T004', 'capacity' => 4, 'status' => 'available'],
+            ['table_number' => 'T005', 'capacity' => 4, 'status' => 'available'],
+            ['table_number' => 'T006', 'capacity' => 6, 'status' => 'available'],
+            ['table_number' => 'T007', 'capacity' => 6, 'status' => 'available'],
+            ['table_number' => 'T008', 'capacity' => 8, 'status' => 'available'],
+            ['table_number' => 'T009', 'capacity' => 8, 'status' => 'available'],
+            ['table_number' => 'T010', 'capacity' => 10, 'status' => 'available'],
         ];
 
         foreach ($tables as $table) {

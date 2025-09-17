@@ -21,11 +21,15 @@ class ProcessPaymentRequest extends FormRequest
     {
         return [
             'payment_option' => 'required|integer|in:1,2',
-            'payment_gateway' => 'required|string|in:paypal,stripe',
+            'payment_gateway' => 'required|string|in:paypal',
             'payment_data' => 'sometimes|array',
-            'payment_data.currency' => 'sometimes|string|in:usd,eur,gbp',
+
+            // PayPal specific validation
+            'payment_data.currency' => 'sometimes|string|in:USD,EUR,GBP,CAD,AUD,JPY',
             'payment_data.description' => 'sometimes|string|max:255',
             'payment_data.metadata' => 'sometimes|array',
+
+            // General items validation
             'payment_data.items' => 'sometimes|array',
             'payment_data.items.*.name' => 'required_with:payment_data.items|string',
             'payment_data.items.*.price' => 'required_with:payment_data.items|numeric|min:0',
@@ -42,8 +46,8 @@ class ProcessPaymentRequest extends FormRequest
             'payment_option.required' => 'Payment option is required.',
             'payment_option.in' => 'Payment option must be 1 (Full Service Package) or 2 (Service Only).',
             'payment_gateway.required' => 'Payment gateway is required.',
-            'payment_gateway.in' => 'Payment gateway must be either paypal or stripe.',
-            'payment_data.currency.in' => 'Currency must be USD, EUR, or GBP.',
+            'payment_gateway.in' => 'Payment gateway must be PayPal.',
+            'payment_data.currency.in' => 'Currency must be USD, EUR, GBP, CAD, AUD, or JPY.',
         ];
     }
 

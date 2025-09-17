@@ -151,7 +151,7 @@ class TableController extends Controller
             $availableTables = $this->tableRepository->getAvailableTables(
                 $carbonDate,
                 $request->time,
-                $request->number_of_guests
+                $request->getGuestsCount() // استخدام الدالة الجديدة
             );
 
             if ($availableTables->isEmpty()) {

@@ -21,5 +21,13 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // Handle unauthenticated requests for API
+        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'message' => 'Unauthenticated.',
+                    'status' => 401
+                ], 401);
+            }
+        });
     })->create();

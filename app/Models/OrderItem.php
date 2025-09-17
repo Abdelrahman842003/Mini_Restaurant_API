@@ -54,6 +54,22 @@ class OrderItem extends Model
         return $this->belongsTo(MenuItem::class);
     }
 
+    /**
+     * Get the total price for this item (price * quantity - discount)
+     */
+    public function getTotalPriceAttribute(): float
+    {
+        return ($this->price * $this->quantity) - $this->discount;
+    }
+
+    /**
+     * Get the discounted unit price
+     */
+    public function getDiscountedPriceAttribute(): float
+    {
+        return $this->price - ($this->discount / $this->quantity);
+    }
+
     // Helper methods
 
     /**

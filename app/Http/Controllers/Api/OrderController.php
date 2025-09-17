@@ -28,7 +28,8 @@ class OrderController extends Controller
     {
         try {
             return DB::transaction(function () use ($request) {
-                $orderItems = $request->validated()['items'];
+                $validated = $request->validated();
+                $orderItems = $validated['items'];
 
                 // Validate all items availability first
                 foreach ($orderItems as $item) {
@@ -38,30 +39,32 @@ class OrderController extends Controller
                     }
                 }
 
-                // Calculate total cost
-                $totalCost = 0;
+                // Calculate total amount
+                $totalAmount = 0;
                 foreach ($orderItems as $item) {
                     $menuItem = $this->menuItemRepository->findById($item['menu_item_id']);
-                    $totalCost += $menuItem->price * $item['quantity'];
+                    $totalAmount += $menuItem->price * $item['quantity'];
                 }
 
-                // Create the order
+                // Create the order with correct field name
                 $order = $this->orderRepository->create([
                     'user_id' => auth()->id(),
-                    'total_cost' => $totalCost,
-                    'status' => 'pending'
+                    'total_amount' => $totalAmount,
+                    'status' => 'pending',
+                    'notes' => $validated['special_instructions'] ?? null // استخدام 'notes' بدلاً من 'special_instructions'
                 ]);
 
                 // Create order items and update inventory
                 foreach ($orderItems as $item) {
                     $menuItem = $this->menuItemRepository->findById($item['menu_item_id']);
 
+                    // Create order item with correct field names matching the database schema
                     OrderItem::create([
                         'order_id' => $order->id,
                         'menu_item_id' => $item['menu_item_id'],
                         'quantity' => $item['quantity'],
-                        'unit_price' => $menuItem->price,
-                        'total_price' => $menuItem->price * $item['quantity']
+                        'price' => $menuItem->price, // استخدام 'price' بدلاً من 'unit_price'
+                        'discount' => 0 // إضافة حقل discount المطلوب
                     ]);
 
                     // Decrement available quantity
@@ -71,6 +74,7 @@ class OrderController extends Controller
                     );
                 }
 
+                // Reload order with relationships
                 $order = $this->orderRepository->findById($order->id);
 
                 return $this->apiResponse(
@@ -81,6 +85,12 @@ class OrderController extends Controller
                 );
             });
         } catch (\Exception $e) {
+            \Log::error('Order creation failed: ' . $e->getMessage(), [
+                'user_id' => auth()->id(),
+                'request_data' => $request->all(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return $this->apiResponse(400, 'Failed to create order', $e->getMessage());
         }
     }

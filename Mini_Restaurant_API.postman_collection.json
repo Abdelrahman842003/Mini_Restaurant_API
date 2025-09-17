@@ -1,7 +1,7 @@
 {
 	"info": {
-		"name": "Mini Restaurant Reservation System API v2.0",
-		"description": "Complete API collection for Mini Restaurant Reservation System - Apps Square Task\n\n🚀 NEW in v2.0: Advanced Payment System with Multiple Gateways\n\nThis collection includes all endpoints with sample data for testing:\n- Authentication (Register, Login, Logout)\n- Menu Management\n- Table Availability & Reservations\n- Order Management\n- 💳 Advanced Payment Processing (PayPal, Stripe, Paymob + InstaPay)\n- Waiting List Management\n- 🔄 Payment Callbacks & Webhooks\n- ✅ Payment Verification\n\nMake sure to:\n1. Start with Authentication to get the token\n2. Update the {{token}} variable after login\n3. Follow the testing sequence in order\n4. Set up payment gateway credentials in environment variables\n\n📚 For detailed payment system documentation, see: PAYMENT_SYSTEM_COMPLETE_GUIDE.md",
+		"name": "Mini Restaurant Reservation System API v2.1",
+		"description": "Complete API collection for Mini Restaurant Reservation System - Apps Square Task\n\n🚀 NEW in v2.1: Simplified Payment System with PayPal Only\n\nThis collection includes all endpoints with sample data for testing:\n- Authentication (Register, Login, Logout)\n- Menu Management\n- Table Availability & Reservations\n- Order Management\n- 💳 Payment Processing (PayPal Only)\n- Waiting List Management\n- 🔄 Payment Callbacks & Webhooks\n- ✅ Payment Verification\n\nMake sure to:\n1. Start with Authentication to get the token\n2. Update the {{token}} variable after login\n3. Follow the testing sequence in order\n4. Set up PayPal credentials in environment variables\n\n📚 For detailed payment system documentation, see: PAYMENT_SYSTEM_GUIDE.md",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
@@ -47,7 +47,7 @@
 		},
 		{
 			"key": "paymentGateway",
-			"value": "stripe",
+			"value": "paypal",
 			"type": "string"
 		}
 	],
@@ -309,7 +309,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/v1/tables/availability?date=2024-12-25&time=19:00&guests=4",
+							"raw": "{{baseUrl}}/v1/tables/availability?date=2025-12-25&time=19:00&guests=4",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -321,7 +321,7 @@
 							"query": [
 								{
 									"key": "date",
-									"value": "2024-12-25"
+									"value": "2025-12-25"
 								},
 								{
 									"key": "time",
@@ -530,7 +530,7 @@
 			"description": "Order management endpoints for creating and viewing orders."
 		},
 		{
-			"name": "💳 Payment System v2.0",
+			"name": "💳 Payment System (PayPal Only)",
 			"item": [
 				{
 					"name": "📋 Payment Information",
@@ -591,14 +591,12 @@
 											"    pm.response.to.have.status(200);",
 											"    const response = pm.response.json();",
 											"    pm.expect(response.data).to.be.an('array');",
-											"    pm.expect(response.data).to.have.lengthOf(3);",
+											"    pm.expect(response.data).to.have.lengthOf(1);",
 											"    ",
 											"    const gateways = response.data.map(g => g.id);",
-											"    pm.expect(gateways).to.include.members(['paypal', 'stripe', 'paymob']);",
-											"    ",
-											"    const paymob = response.data.find(g => g.id === 'paymob');",
-											"    pm.expect(paymob.methods).to.be.an('array');",
-											"    pm.expect(paymob.methods.find(m => m.id === 'instapay')).to.exist;",
+											"    pm.expect(gateways).to.include('paypal');",
+											"    pm.expect(gateways).to.not.include('paymob');",
+											"    pm.expect(gateways).to.not.include('stripe');",
 											"});"
 										],
 										"type": "text/javascript"
@@ -627,7 +625,7 @@
 										"payment-gateways"
 									]
 								},
-								"description": "Get available payment gateways:\n- PayPal (redirect)\n- Stripe (inline)\n- Paymob (iframe) with Card and InstaPay options"
+								"description": "Get available payment gateways:\n- PayPal (redirect) - Only supported gateway"
 							}
 						}
 					],
@@ -636,65 +634,6 @@
 				{
 					"name": "💰 Process Payments",
 					"item": [
-						{
-							"name": "Pay with Stripe",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"if (pm.response.code === 201) {",
-											"    const response = pm.response.json();",
-											"    pm.collectionVariables.set('invoiceId', response.data.invoice.id);",
-											"    pm.collectionVariables.set('transactionId', response.data.payment_result.transaction_id);",
-											"    pm.collectionVariables.set('paymentGateway', 'stripe');",
-											"    ",
-											"    pm.test('✅ Stripe payment initiated', () => {",
-											"        pm.expect(response.data.payment_result.success).to.be.true;",
-											"        pm.expect(response.data.payment_result.payment_method).to.eql('stripe');",
-											"        pm.expect(response.data.payment_result).to.have.property('client_secret');",
-											"    });",
-											"    ",
-											"    console.log('💳 Stripe Payment initiated');",
-											"    console.log('🔑 Client Secret:', response.data.payment_result.client_secret);",
-											"    console.log('📄 Invoice ID:', response.data.invoice.id);",
-											"}"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{token}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n  \"payment_option\": 1,\n  \"payment_gateway\": \"stripe\",\n  \"payment_data\": {\n    \"currency\": \"usd\"\n  }\n}"
-								},
-								"url": {
-									"raw": "{{baseUrl}}/v1/orders/{{orderId}}/pay",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"v1",
-										"orders",
-										"{{orderId}}",
-										"pay"
-									]
-								},
-								"description": "Process payment using Stripe gateway with credit/debit card."
-							}
-						},
 						{
 							"name": "Pay with PayPal",
 							"event": [
@@ -756,7 +695,7 @@
 							}
 						},
 						{
-							"name": "Pay with Paymob (Card)",
+							"name": "Pay with PayPal (Full Service)",
 							"event": [
 								{
 									"listen": "test",
@@ -766,17 +705,16 @@
 											"    const response = pm.response.json();",
 											"    pm.collectionVariables.set('invoiceId', response.data.invoice.id);",
 											"    pm.collectionVariables.set('transactionId', response.data.payment_result.transaction_id);",
-											"    pm.collectionVariables.set('paymentGateway', 'paymob');",
+											"    pm.collectionVariables.set('paymentGateway', 'paypal');",
 											"    ",
-											"    pm.test('✅ Paymob card payment initiated', () => {",
+											"    pm.test('✅ PayPal Full Service payment initiated', () => {",
 											"        pm.expect(response.data.payment_result.success).to.be.true;",
-											"        pm.expect(response.data.payment_result.payment_method).to.eql('paymob');",
-											"        pm.expect(response.data.payment_result.redirect_required).to.be.true;",
-											"        pm.expect(response.data.next_action.type).to.eql('iframe');",
+											"        pm.expect(response.data.payment_result.payment_method).to.eql('paypal');",
+											"        pm.expect(response.data.invoice.payment_option).to.eql(1);",
 											"    });",
 											"    ",
-											"    console.log('💳 Paymob Card Payment initiated');",
-											"    console.log('🔗 iFrame URL:', response.data.next_action.url);",
+											"    console.log('🅿️ PayPal Full Service Payment initiated');",
+											"    console.log('💰 Final Amount:', response.data.invoice.final_amount);",
 											"    console.log('📄 Invoice ID:', response.data.invoice.id);",
 											"}"
 										],
@@ -798,7 +736,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n  \"payment_option\": 1,\n  \"payment_gateway\": \"paymob\",\n  \"payment_data\": {\n    \"payment_method\": \"card\",\n    \"currency\": \"EGP\"\n  }\n}"
+									"raw": "{\n  \"payment_option\": 1,\n  \"payment_gateway\": \"paypal\",\n  \"payment_data\": {\n    \"currency\": \"USD\",\n    \"description\": \"Restaurant Order - Full Service Package\"\n  }\n}"
 								},
 								"url": {
 									"raw": "{{baseUrl}}/v1/orders/{{orderId}}/pay",
@@ -812,127 +750,11 @@
 										"pay"
 									]
 								},
-								"description": "Process payment using Paymob gateway with credit/debit card through iFrame."
-							}
-						},
-						{
-							"name": "Pay with InstaPay (Paymob)",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"if (pm.response.code === 201) {",
-											"    const response = pm.response.json();",
-											"    pm.collectionVariables.set('invoiceId', response.data.invoice.id);",
-											"    pm.collectionVariables.set('transactionId', response.data.payment_result.transaction_id);",
-											"    pm.collectionVariables.set('paymentGateway', 'paymob');",
-											"    ",
-											"    pm.test('✅ InstaPay payment initiated', () => {",
-											"        pm.expect(response.data.payment_result.success).to.be.true;",
-											"        pm.expect(response.data.payment_result.payment_method).to.eql('paymob');",
-											"        pm.expect(response.data.instapay_data).to.exist;",
-											"        pm.expect(response.data.instapay_data.mobile_number).to.eql('+201234567890');",
-											"    });",
-											"    ",
-											"    console.log('📱 InstaPay Payment initiated');",
-											"    console.log('📞 Mobile:', response.data.instapay_data.mobile_number);",
-											"    console.log('🔗 InstaPay URL:', response.data.instapay_data.instapay_url);",
-											"    console.log('📄 Invoice ID:', response.data.invoice.id);",
-											"}"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{token}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n  \"payment_option\": 1,\n  \"payment_gateway\": \"paymob\",\n  \"payment_data\": {\n    \"payment_method\": \"instapay\",\n    \"mobile_number\": \"+201234567890\",\n    \"currency\": \"EGP\"\n  }\n}"
-								},
-								"url": {
-									"raw": "{{baseUrl}}/v1/orders/{{orderId}}/pay",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"v1",
-										"orders",
-										"{{orderId}}",
-										"pay"
-									]
-								},
-								"description": "Process payment using InstaPay mobile wallet through Paymob gateway."
-							}
-						},
-						{
-							"name": "Pay with Legacy Method",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"if (pm.response.code === 201) {",
-											"    const response = pm.response.json();",
-											"    pm.collectionVariables.set('invoiceId', response.data.id);",
-											"    ",
-											"    pm.test('✅ Legacy payment processed', () => {",
-											"        pm.expect(response.data).to.have.property('final_amount');",
-											"        pm.expect(response.data.payment_option).to.eql(2);",
-											"    });",
-											"    ",
-											"    console.log('💰 Legacy Payment processed');",
-											"    console.log('📄 Invoice ID:', response.data.id);",
-											"}"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{token}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n  \"payment_option\": 2\n}"
-								},
-								"url": {
-									"raw": "{{baseUrl}}/v1/orders/{{orderId}}/pay-legacy",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"v1",
-										"orders",
-										"{{orderId}}",
-										"pay-legacy"
-									]
-								},
-								"description": "Process payment using legacy method (direct payment without external gateway)."
+								"description": "Process payment using PayPal with Full Service Package (14% taxes + 20% service charge)."
 							}
 						}
 					],
-					"description": "Payment processing endpoints for different gateways"
+					"description": "Payment processing endpoints for PayPal gateway"
 				},
 				{
 					"name": "📊 Payment Status & Invoices",
@@ -950,6 +772,7 @@
 											"    pm.expect(response.data).to.have.property('order_status');",
 											"    pm.expect(response.data).to.have.property('payment_status');",
 											"    pm.expect(response.data).to.have.property('final_amount');",
+											"    pm.expect(response.data.payment_gateway).to.eql('paypal');",
 											"});"
 										],
 										"type": "text/javascript"
@@ -996,6 +819,7 @@
 											"    pm.expect(response.data).to.have.property('final_amount');",
 											"    pm.expect(response.data).to.have.property('tax_amount');",
 											"    pm.expect(response.data).to.have.property('service_charge_amount');",
+											"    pm.expect(response.data.payment_gateway).to.eql('paypal');",
 											"});"
 										],
 										"type": "text/javascript"
@@ -1039,7 +863,7 @@
 											"    pm.response.to.have.status(200);",
 											"    const response = pm.response.json();",
 											"    pm.expect(response.data).to.have.property('verified');",
-											"    pm.expect(response.data.payment_method).to.eql(pm.collectionVariables.get('paymentGateway'));",
+											"    pm.expect(response.data.payment_method).to.eql('paypal');",
 											"});"
 										],
 										"type": "text/javascript"
@@ -1071,7 +895,7 @@
 										"{{transactionId}}"
 									]
 								},
-								"description": "Verify payment status directly from the payment gateway API."
+								"description": "Verify payment status directly from PayPal API."
 							}
 						}
 					],
@@ -1143,40 +967,12 @@
 								},
 								"description": "Simulate PayPal cancel callback (normally called by PayPal)."
 							}
-						},
-						{
-							"name": "Simulate Paymob Callback",
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n  \"success\": \"true\",\n  \"pending\": \"false\",\n  \"amount_cents\": 13400,\n  \"order\": {\n    \"id\": \"{{transactionId}}\"\n  },\n  \"id\": \"paymob_transaction_123\",\n  \"hmac\": \"example_hmac_signature\"\n}"
-								},
-								"url": {
-									"raw": "{{baseUrl}}/payment/paymob/callback",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"payment",
-										"paymob",
-										"callback"
-									]
-								},
-								"description": "Simulate Paymob callback (normally called by Paymob)."
-							}
 						}
 					],
-					"description": "Simulation endpoints for payment callbacks (normally called by external services)"
+					"description": "Simulation endpoints for PayPal callbacks (normally called by external services)"
 				}
 			],
-			"description": "🚀 NEW: Advanced Payment System v2.0 with multiple gateways and InstaPay support"
+			"description": "🚀 Payment System v2.1 with PayPal gateway only"
 		},
 		{
 			"name": "📋 Waiting List",

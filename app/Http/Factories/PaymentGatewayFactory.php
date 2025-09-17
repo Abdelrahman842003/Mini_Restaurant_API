@@ -3,9 +3,7 @@
 namespace App\Http\Factories;
 
 use App\Http\Interfaces\PaymentGatewayInterface;
-use App\Http\Services\PaymentGateways\StripeGateway;
 use App\Http\Services\PaymentGateways\PayPalGateway;
-use App\Http\Services\PaymentGateways\PaymobGateway;
 use InvalidArgumentException;
 
 class PaymentGatewayFactory
@@ -13,17 +11,15 @@ class PaymentGatewayFactory
     /**
      * Create payment gateway instance based on gateway name
      *
-     * @param string $gatewayName Gateway identifier (stripe, paypal, paymob)
+     * @param string $gatewayName Gateway identifier (paypal only)
      * @return PaymentGatewayInterface
      * @throws InvalidArgumentException
      */
     public static function make(string $gatewayName): PaymentGatewayInterface
     {
         return match (strtolower($gatewayName)) {
-            'stripe' => new StripeGateway(),
             'paypal' => new PayPalGateway(),
-            'paymob' => new PaymobGateway(),
-            default => throw new InvalidArgumentException("Unsupported payment gateway: {$gatewayName}")
+            default => throw new InvalidArgumentException("Unsupported payment gateway: {$gatewayName}. Only PayPal is supported.")
         };
     }
 
@@ -34,7 +30,7 @@ class PaymentGatewayFactory
      */
     public static function getSupportedGateways(): array
     {
-        return ['stripe', 'paypal', 'paymob'];
+        return ['paypal'];
     }
 
     /**

@@ -237,7 +237,6 @@ Accept: application/json
 # @name Get Payment Gateways
 # Get available payment gateways:
 # - PayPal (redirect)
-# - Stripe (inline)
 # - Paymob (iframe) with Card and InstaPay options
 GET {{baseUrl}}/v1/payment-gateways
 Authorization: Bearer {{token}}
@@ -249,51 +248,15 @@ Accept: application/json
     //     pm.response.to.have.status(200);
     //     const response = pm.response.json();
     //     pm.expect(response.data).to.be.an('array');
-    //     pm.expect(response.data).to.have.lengthOf(3);
-    //     
+    //     pm.expect(response.data).to.have.lengthOf(2);
+    //
     //     const gateways = response.data.map(g => g.id);
-    //     pm.expect(gateways).to.include.members(['paypal', 'stripe', 'paymob']);
-    //     
+    //     pm.expect(gateways).to.include.members(['paypal', 'paymob']);
+    //
     //     const paymob = response.data.find(g => g.id === 'paymob');
     //     pm.expect(paymob.methods).to.be.an('array');
     //     pm.expect(paymob.methods.find(m => m.id === 'instapay')).to.exist;
     // });
-%}
-
-###
-# group: 💳 Payment System v2.0 / 💰 Process Payments
-# @name Pay with Stripe
-# Process payment using Stripe gateway with credit/debit card.
-POST {{baseUrl}}/v1/orders/{{orderId}}/pay
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{
-  "payment_option": 1,
-  "payment_gateway": "stripe",
-  "payment_data": {
-    "currency": "usd"
-  }
-}
-
-> {%
-    // TODO: migrate to HTTP Client Response handler API
-    // if (pm.response.code === 201) {
-    //     const response = pm.response.json();
-    //     pm.collectionVariables.set('invoiceId', response.data.invoice.id);
-    //     pm.collectionVariables.set('transactionId', response.data.payment_result.transaction_id);
-    //     pm.collectionVariables.set('paymentGateway', 'stripe');
-    //     
-    //     pm.test('✅ Stripe payment initiated', () => {
-    //         pm.expect(response.data.payment_result.success).to.be.true;
-    //         pm.expect(response.data.payment_result.payment_method).to.eql('stripe');
-    //         pm.expect(response.data.payment_result).to.have.property('client_secret');
-    //     });
-    //     
-    //     console.log('💳 Stripe Payment initiated');
-    //     console.log('🔑 Client Secret:', response.data.payment_result.client_secret);
-    //     console.log('📄 Invoice ID:', response.data.invoice.id);
-    // }
 %}
 
 ###
@@ -319,14 +282,14 @@ Content-Type: application/json
     //     pm.collectionVariables.set('invoiceId', response.data.invoice.id);
     //     pm.collectionVariables.set('transactionId', response.data.payment_result.transaction_id);
     //     pm.collectionVariables.set('paymentGateway', 'paypal');
-    //     
+    //
     //     pm.test('✅ PayPal payment initiated', () => {
     //         pm.expect(response.data.payment_result.success).to.be.true;
     //         pm.expect(response.data.payment_result.payment_method).to.eql('paypal');
     //         pm.expect(response.data.payment_result.redirect_required).to.be.true;
     //         pm.expect(response.data.next_action.type).to.eql('redirect');
     //     });
-    //     
+    //
     //     console.log('🅿️ PayPal Payment initiated');
     //     console.log('🔗 Approval URL:', response.data.next_action.url);
     //     console.log('📄 Invoice ID:', response.data.invoice.id);
@@ -357,14 +320,14 @@ Content-Type: application/json
     //     pm.collectionVariables.set('invoiceId', response.data.invoice.id);
     //     pm.collectionVariables.set('transactionId', response.data.payment_result.transaction_id);
     //     pm.collectionVariables.set('paymentGateway', 'paymob');
-    //     
+    //
     //     pm.test('✅ Paymob card payment initiated', () => {
     //         pm.expect(response.data.payment_result.success).to.be.true;
     //         pm.expect(response.data.payment_result.payment_method).to.eql('paymob');
     //         pm.expect(response.data.payment_result.redirect_required).to.be.true;
     //         pm.expect(response.data.next_action.type).to.eql('iframe');
     //     });
-    //     
+    //
     //     console.log('💳 Paymob Card Payment initiated');
     //     console.log('🔗 iFrame URL:', response.data.next_action.url);
     //     console.log('📄 Invoice ID:', response.data.invoice.id);
@@ -396,46 +359,18 @@ Content-Type: application/json
     //     pm.collectionVariables.set('invoiceId', response.data.invoice.id);
     //     pm.collectionVariables.set('transactionId', response.data.payment_result.transaction_id);
     //     pm.collectionVariables.set('paymentGateway', 'paymob');
-    //     
+    //
     //     pm.test('✅ InstaPay payment initiated', () => {
     //         pm.expect(response.data.payment_result.success).to.be.true;
     //         pm.expect(response.data.payment_result.payment_method).to.eql('paymob');
     //         pm.expect(response.data.instapay_data).to.exist;
     //         pm.expect(response.data.instapay_data.mobile_number).to.eql('+201234567890');
     //     });
-    //     
+    //
     //     console.log('📱 InstaPay Payment initiated');
     //     console.log('📞 Mobile:', response.data.instapay_data.mobile_number);
     //     console.log('🔗 InstaPay URL:', response.data.instapay_data.instapay_url);
     //     console.log('📄 Invoice ID:', response.data.invoice.id);
-    // }
-%}
-
-###
-# group: 💳 Payment System v2.0 / 💰 Process Payments
-# @name Pay with Legacy Method
-# Process payment using legacy method (direct payment without external gateway).
-POST {{baseUrl}}/v1/orders/{{orderId}}/pay-legacy
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{
-  "payment_option": 2
-}
-
-> {%
-    // TODO: migrate to HTTP Client Response handler API
-    // if (pm.response.code === 201) {
-    //     const response = pm.response.json();
-    //     pm.collectionVariables.set('invoiceId', response.data.id);
-    //     
-    //     pm.test('✅ Legacy payment processed', () => {
-    //         pm.expect(response.data).to.have.property('final_amount');
-    //         pm.expect(response.data.payment_option).to.eql(2);
-    //     });
-    //     
-    //     console.log('💰 Legacy Payment processed');
-    //     console.log('📄 Invoice ID:', response.data.id);
     // }
 %}
 

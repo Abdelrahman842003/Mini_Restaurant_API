@@ -28,26 +28,46 @@ class ReservationController extends Controller
         try {
             $validated = $request->validated();
 
+            // Get data with fallback to ensure compatibility
+            $date = $validated['reservation_date'] ?? $validated['date'] ?? null;
+            $time = $validated['reservation_time'] ?? $validated['time'] ?? null;
+            $guestsCount = $validated['guests_count'] ?? $validated['number_of_guests'] ?? null;
+
+            if (!$date || !$time || !$guestsCount) {
+                return $this->apiResponse(400, 'Missing required reservation data');
+            }
+
             // Convert date and time to reservation_time
-            $reservationTime = Carbon::parse($validated['date'] . ' ' . $validated['time']);
+            $reservationTime = Carbon::parse($date . ' ' . $time);
 
             // Validate table availability
-            if (!$this->tableRepository->isTableAvailable($validated['table_id'], Carbon::parse($validated['date']), $validated['time'])) {
+            $isAvailable = $this->tableRepository->isTableAvailable(
+                $validated['table_id'],
+                Carbon::parse($date),
+                $time
+            );
+
+            if (!$isAvailable) {
                 return $this->apiResponse(400, 'Table is not available for the selected date and time');
             }
 
             // Verify table capacity
             $table = $this->tableRepository->findById($validated['table_id']);
-            if (!$table || $table->capacity < $validated['number_of_guests']) {
+            if (!$table) {
+                return $this->apiResponse(404, 'Table not found');
+            }
+
+            if ($table->capacity < $guestsCount) {
                 return $this->apiResponse(400, 'Table capacity is insufficient for the number of guests');
             }
 
             $reservationData = [
                 'user_id' => auth()->id(),
                 'table_id' => $validated['table_id'],
-                'number_of_guests' => $validated['number_of_guests'],
+                'number_of_guests' => $guestsCount,
                 'reservation_time' => $reservationTime,
-                'status' => 'confirmed'
+                'status' => 'confirmed',
+                'special_requests' => $validated['special_requests'] ?? null
             ];
 
             $reservation = $this->reservationRepository->create($reservationData);
@@ -62,7 +82,13 @@ class ReservationController extends Controller
                 new ReservationResource($reservation)
             );
         } catch (\Exception $e) {
-            return $this->apiResponse(400, 'Failed to create reservation', $e->getMessage());
+            \Log::error('Reservation creation failed: ' . $e->getMessage(), [
+                'user_id' => auth()->id(),
+                'request_data' => $request->all(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return $this->apiResponse(500, 'Failed to create reservation', $e->getMessage());
         }
     }
 

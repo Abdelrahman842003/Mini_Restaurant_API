@@ -21,39 +21,6 @@ class PaymentService
     ) {}
 
     /**
-     * Process payment for an order (legacy method for backward compatibility)
-     */
-    public function processPayment(Order $order, int $paymentOption): Invoice
-    {
-        return DB::transaction(function () use ($order, $paymentOption) {
-            // Verify order is not already paid
-            if ($order->status === 'paid') {
-                throw new Exception('Order is already paid.');
-            }
-
-            // Get payment strategy based on option
-            $paymentStrategy = $this->paymentStrategyFactory->create($paymentOption);
-
-            // Calculate amounts using strategy
-            $calculations = $paymentStrategy->calculate($order->total_amount);
-
-            // Create invoice
-            $invoice = $this->invoiceRepository->create([
-                'order_id' => $order->id,
-                'payment_option' => $paymentOption,
-                'tax_amount' => $calculations['tax_amount'],
-                'service_charge_amount' => $calculations['service_charge_amount'],
-                'final_amount' => $calculations['final_amount']
-            ]);
-
-            // Update order status
-            $this->orderRepository->updateStatus($order->id, 'paid');
-
-            return $invoice;
-        });
-    }
-
-    /**
      * Get available payment methods - Option 1 and Option 2
      */
     public function getPaymentMethods(): array
@@ -77,7 +44,7 @@ class PaymentService
     }
 
     /**
-     * Get available payment gateways - PayPal, Stripe, and Paymob
+     * Get available payment gateways - PayPal only
      */
     public function getAvailableGateways(): array
     {
@@ -85,41 +52,16 @@ class PaymentService
             [
                 'id' => 'paypal',
                 'name' => 'PayPal',
-                'description' => 'Pay securely with PayPal',
+                'description' => 'Pay securely with PayPal worldwide',
                 'type' => 'redirect',
-                'icon' => 'paypal-icon.png'
-            ],
-            [
-                'id' => 'stripe',
-                'name' => 'Stripe',
-                'description' => 'Pay with credit/debit card via Stripe',
-                'type' => 'inline',
-                'icon' => 'stripe-icon.png'
-            ],
-            [
-                'id' => 'paymob',
-                'name' => 'Paymob',
-                'description' => 'Pay with credit/debit card (Egypt)',
-                'type' => 'iframe',
-                'icon' => 'paymob-icon.png',
-                'methods' => [
-                    [
-                        'id' => 'card',
-                        'name' => 'Credit/Debit Card',
-                        'description' => 'Pay with Visa, MasterCard, or Meeza'
-                    ],
-                    [
-                        'id' => 'instapay',
-                        'name' => 'InstaPay',
-                        'description' => 'Pay with mobile wallet (Vodafone Cash, Orange Cash, etc.)'
-                    ]
-                ]
+                'icon' => 'paypal-icon.png',
+                'currencies' => ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY']
             ]
         ];
     }
 
     /**
-     * Process payment with specific gateway using Factory Pattern
+     * Process payment with specific gateway - ONLY creates payment intent, does NOT update order status
      */
     public function processPaymentWithGateway(Order $order, int $paymentOption, string $gateway, array $paymentData = []): array
     {
@@ -141,7 +83,7 @@ class PaymentService
                 // Calculate amounts using strategy
                 $calculations = $paymentStrategy->calculate($order->total_amount);
 
-                // Create invoice
+                // Create invoice with pending status
                 $invoice = $this->invoiceRepository->create([
                     'order_id' => $order->id,
                     'payment_option' => $paymentOption,
@@ -152,26 +94,21 @@ class PaymentService
                     'payment_status' => 'pending'
                 ]);
 
-                // Process payment with selected gateway using Factory Pattern
-                $gatewayResult = $this->processWithGateway($gateway, $calculations['final_amount'], $paymentData, $order, $invoice);
+                // Create payment intent with gateway (NO status updates here)
+                $gatewayResult = $this->createPaymentIntent($gateway, $calculations['final_amount'], $paymentData, $order, $invoice);
 
-                // Update invoice with payment details
+                // Update invoice with payment details only
                 $invoice->update([
                     'transaction_id' => $gatewayResult['transaction_id'] ?? null,
                     'payment_details' => json_encode($gatewayResult)
                 ]);
 
-                // Update order status only if payment is successful and doesn't require redirect
-                if ($gatewayResult['success'] && !($gatewayResult['redirect_required'] ?? false)) {
-                    $this->orderRepository->updateStatus($order->id, 'paid');
-                    $invoice->update(['payment_status' => 'completed']);
-                }
-
-                Log::info('Payment processed with gateway', [
+                Log::info('Payment intent created', [
                     'gateway' => $gateway,
                     'order_id' => $order->id,
                     'invoice_id' => $invoice->id,
-                    'success' => $gatewayResult['success']
+                    'transaction_id' => $gatewayResult['transaction_id'] ?? null,
+                    'redirect_required' => $gatewayResult['redirect_required'] ?? false
                 ]);
 
                 return [
@@ -180,7 +117,7 @@ class PaymentService
                 ];
 
             } catch (Exception $e) {
-                Log::error('Payment processing failed', [
+                Log::error('Payment intent creation failed', [
                     'gateway' => $gateway,
                     'order_id' => $order->id,
                     'error' => $e->getMessage()
@@ -191,9 +128,9 @@ class PaymentService
     }
 
     /**
-     * Process payment with specific gateway using Factory Pattern (Clean implementation)
+     * Create payment intent with gateway (renamed from processWithGateway for clarity)
      */
-    private function processWithGateway(string $gateway, float $amount, array $paymentData, Order $order, Invoice $invoice): array
+    private function createPaymentIntent(string $gateway, float $amount, array $paymentData, Order $order, Invoice $invoice): array
     {
         try {
             // Use Factory Pattern to create the appropriate gateway
@@ -225,7 +162,7 @@ class PaymentService
             // Create payment using the gateway
             $result = $paymentGateway->createPayment($gatewayPaymentData);
 
-            Log::info('Gateway payment creation result', [
+            Log::info('Gateway payment intent created', [
                 'gateway' => $gateway,
                 'success' => $result['success'],
                 'transaction_id' => $result['transaction_id'] ?? null
@@ -234,7 +171,7 @@ class PaymentService
             return $result;
 
         } catch (Exception $e) {
-            Log::error('Gateway payment processing failed', [
+            Log::error('Gateway payment intent creation failed', [
                 'gateway' => $gateway,
                 'error' => $e->getMessage()
             ]);
@@ -248,7 +185,7 @@ class PaymentService
     }
 
     /**
-     * Handle payment callback from any gateway using Factory Pattern
+     * Handle payment callback and capture payment - THIS is where status updates happen
      */
     public function handlePaymentCallback(string $gateway, $request): array
     {
@@ -256,13 +193,14 @@ class PaymentService
             // Use Factory Pattern to get the appropriate gateway
             $paymentGateway = PaymentGatewayFactory::make($gateway);
 
-            // Handle callback using the gateway
+            // Handle callback and capture payment using the gateway
             $result = $paymentGateway->handleCallback($request);
 
             Log::info('Payment callback handled', [
                 'gateway' => $gateway,
                 'success' => $result['success'],
-                'transaction_id' => $result['transaction_id'] ?? null
+                'transaction_id' => $result['transaction_id'] ?? null,
+                'status' => $result['status'] ?? 'unknown'
             ]);
 
             return $result;
@@ -279,6 +217,70 @@ class PaymentService
                 'payment_method' => $gateway
             ];
         }
+    }
+
+    /**
+     * Update payment status after successful callback - called by PaymentCallbackController
+     */
+    public function updatePaymentStatus(string $transactionId, string $status, array $paymentDetails = []): bool
+    {
+        return DB::transaction(function () use ($transactionId, $status, $paymentDetails) {
+            try {
+                // Find invoice by transaction ID
+                $invoice = Invoice::where('transaction_id', $transactionId)->first();
+
+                if (!$invoice) {
+                    Log::warning('Invoice not found for transaction', ['transaction_id' => $transactionId]);
+                    return false;
+                }
+
+                $paymentStatus = match ($status) {
+                    'completed', 'COMPLETED' => 'completed',
+                    'failed', 'FAILED' => 'failed',
+                    'cancelled', 'CANCELLED' => 'cancelled',
+                    default => 'pending'
+                };
+
+                $orderStatus = match ($status) {
+                    'completed', 'COMPLETED' => 'paid',
+                    'failed', 'FAILED' => 'payment_failed',
+                    'cancelled', 'CANCELLED' => 'cancelled',
+                    default => 'pending'
+                };
+
+                // Update invoice
+                $invoice->update([
+                    'payment_status' => $paymentStatus,
+                    'payment_details' => json_encode(array_merge(
+                        json_decode($invoice->payment_details, true) ?? [],
+                        [
+                            'callback_result' => $paymentDetails,
+                            'captured_at' => now()->toISOString()
+                        ]
+                    ))
+                ]);
+
+                // Update order
+                $invoice->order->update(['status' => $orderStatus]);
+
+                Log::info('Payment status updated successfully', [
+                    'transaction_id' => $transactionId,
+                    'invoice_id' => $invoice->id,
+                    'order_id' => $invoice->order_id,
+                    'payment_status' => $paymentStatus,
+                    'order_status' => $orderStatus
+                ]);
+
+                return true;
+
+            } catch (Exception $e) {
+                Log::error('Failed to update payment status', [
+                    'transaction_id' => $transactionId,
+                    'error' => $e->getMessage()
+                ]);
+                return false;
+            }
+        });
     }
 
     /**
@@ -311,7 +313,6 @@ class PaymentService
             return [
                 'success' => false,
                 'error' => $e->getMessage(),
-                'payment_method' => $gateway,
                 'verified' => false
             ];
         }

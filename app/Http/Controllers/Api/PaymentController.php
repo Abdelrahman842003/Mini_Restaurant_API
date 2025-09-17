@@ -8,6 +8,7 @@ use App\Http\Resources\InvoiceResource;
 use App\Http\Services\OrderService;
 use App\Http\Services\PaymentService;
 use App\Http\Traits\ApiResponseTrait;
+use App\Models\Order;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 
@@ -44,7 +45,7 @@ class PaymentController extends Controller
     }
 
     /**
-     * عرض بوابات الدفع المتاحة - PayPal و Stripe فقط
+     * عرض بوابات الدفع المتاحة - PayPal فقط
      *
      * GET /api/v1/payment-gateways
      *
@@ -69,26 +70,24 @@ class PaymentController extends Controller
     /**
      * معالجة عملية الدفع لطلب معين
      *
-     * POST /api/v1/orders/{orderId}/pay
+     * POST /api/v1/orders/{order}/pay
      * Body: {
      *   "payment_option": 1,
-     *   "payment_gateway": "paypal", // or "stripe"
+     *   "payment_gateway": "paypal",
      *   "payment_data": {}
      * }
      *
      * @param ProcessPaymentRequest $request طلب معالجة الدفع
-     * @param int $orderId معرف الطلب
+     * @param Order $order كائن الطلب مع Route Model Binding
      * @return JsonResponse نتيجة العملية مع تفاصيل الفاتورة
      */
-    public function processPayment(ProcessPaymentRequest $request, int $orderId): JsonResponse
+    public function processPayment(ProcessPaymentRequest $request, Order $order): JsonResponse
     {
         try {
             $validated = $request->validated();
 
-            // التحقق من الطلب وملكيته
-            $order = $this->orderService->getOrderForUser($orderId, auth()->id());
-
-            if (!$order) {
+            // التحقق من ملكية الطلب للمستخدم المسجل
+            if ($order->user_id !== auth()->id()) {
                 return $this->apiResponse(404, 'Order not found or unauthorized');
             }
 
@@ -98,11 +97,11 @@ class PaymentController extends Controller
 
             // التحقق من بوابة الدفع المدعومة
             $gateway = $validated['payment_gateway'];
-            if (!in_array($gateway, ['paypal', 'stripe', 'paymob'])) {
-                return $this->apiResponse(400, 'Unsupported payment gateway. Only PayPal, Stripe, and Paymob are supported.');
+            if ($gateway !== 'paypal') {
+                return $this->apiResponse(400, 'Unsupported payment gateway. Only PayPal is supported.');
             }
 
-            // معالجة الدفع مع البوابة المحددة
+            // معالجة الدفع مع PayPal - فقط إنشاء نية الدفع
             $result = $this->paymentService->processPaymentWithGateway(
                 $order,
                 $validated['payment_option'],
@@ -115,90 +114,27 @@ class PaymentController extends Controller
                 'payment_result' => $result['payment_result']
             ];
 
-            // إذا كان الدفع يتطلب إعادة توجيه أو iframe
+            // إذا كان الدفع يتطلب إعادة توجيه لـ PayPal
             if ($result['payment_result']['redirect_required'] ?? false) {
-                $action_type = 'redirect';
-                $action_url = $result['payment_result']['approval_url'] ?? null;
-
-                // للـ Paymob استخدم iframe
-                if ($gateway === 'paymob') {
-                    $action_type = 'iframe';
-                    $action_url = $result['payment_result']['iframe_url'] ?? null;
-                }
-
                 $responseData['next_action'] = [
-                    'type' => $action_type,
-                    'url' => $action_url
+                    'type' => 'redirect',
+                    'url' => $result['payment_result']['approval_url'] ?? null
                 ];
-
-                // إضافة بيانات خاصة بـ Paymob
-                if ($gateway === 'paymob') {
-                    $responseData['paymob_data'] = [
-                        'payment_key' => $result['payment_result']['payment_key'] ?? null,
-                        'order_id' => $result['payment_result']['paymob_order_id'] ?? null
-                    ];
-
-                    // إذا كان InstaPay
-                    if (($validated['payment_data']['payment_method'] ?? '') === 'instapay') {
-                        $responseData['instapay_data'] = [
-                            'mobile_number' => $validated['payment_data']['mobile_number'] ?? null,
-                            'instapay_url' => $result['payment_result']['instapay_url'] ?? null
-                        ];
-                    }
-                }
             }
 
             return $this->apiResponse(
                 201,
-                'Payment processed successfully',
+                'Payment intent created successfully. Please complete payment at PayPal.',
                 null,
                 $responseData
             );
         } catch (\Exception $e) {
             Log::error('Payment processing failed', [
-                'order_id' => $orderId,
+                'order_id' => $order->id,
                 'user_id' => auth()->id(),
                 'error' => $e->getMessage()
             ]);
 
-            return $this->apiResponse(400, 'Payment processing failed', $e->getMessage());
-        }
-    }
-
-    /**
-     * معالجة الدفع القديم (للتوافق مع النظام القديم)
-     *
-     * POST /api/v1/orders/{orderId}/pay-legacy
-     */
-    public function processLegacyPayment(ProcessPaymentRequest $request, int $orderId): JsonResponse
-    {
-        try {
-            $validated = $request->validated();
-
-            // التحقق من الطلب وملكيته
-            $order = $this->orderService->getOrderForUser($orderId, auth()->id());
-
-            if (!$order) {
-                return $this->apiResponse(404, 'Order not found or unauthorized');
-            }
-
-            if ($order->status === 'paid') {
-                return $this->apiResponse(400, 'Order is already paid');
-            }
-
-            // معالجة الدفع بالطريقة القديمة (بدون بوابة دفع)
-            $invoice = $this->paymentService->processPayment(
-                $order,
-                $validated['payment_option']
-            );
-
-            return $this->apiResponse(
-                201,
-                'Payment processed successfully',
-                null,
-                new InvoiceResource($invoice)
-            );
-        } catch (\Exception $e) {
             return $this->apiResponse(400, 'Payment processing failed', $e->getMessage());
         }
     }

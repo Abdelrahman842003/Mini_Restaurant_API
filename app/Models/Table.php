@@ -15,7 +15,9 @@ class Table extends Model
      * @var array<int, string>
      */
     protected $fillable = [
+        'table_number',
         'capacity',
+        'status',
     ];
 
     /**
@@ -27,6 +29,8 @@ class Table extends Model
     {
         return [
             'capacity' => 'integer',
+            'created_at' => 'datetime',
+            'updated_at' => 'datetime',
         ];
     }
 

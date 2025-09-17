@@ -20,9 +20,11 @@ class Order extends Model
     protected $fillable = [
         'user_id',
         'reservation_id',
+        'table_id',
         'status',
         'total_amount',
-        'notes',
+        'notes', // الحقل الصحيح في قاعدة البيانات
+        'special_instructions', // إضافة هذا الحقل للتوافق
     ];
 
     /**
@@ -50,7 +52,7 @@ class Order extends Model
     }
 
     /**
-     * Get the reservation associated with this order.
+     * Get the reservation associated with the order.
      */
     public function reservation(): BelongsTo
     {
@@ -58,19 +60,45 @@ class Order extends Model
     }
 
     /**
-     * Get the order items for this order.
+     * Get the table associated with the order.
      */
-    public function items(): HasMany
+    public function table(): BelongsTo
+    {
+        return $this->belongsTo(Table::class);
+    }
+
+    /**
+     * Get the order items for the order.
+     */
+    public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);
     }
 
     /**
-     * Get the invoice for this order.
+     * Get the invoice for the order.
      */
     public function invoice(): HasOne
     {
         return $this->hasOne(Invoice::class);
+    }
+
+    /**
+     * Get total items count
+     */
+    public function getTotalItemsAttribute(): int
+    {
+        return $this->orderItems->sum('quantity');
+    }
+
+    /**
+     * Get calculated total with items
+     */
+    public function getCalculatedTotalAttribute(): float
+    {
+        return $this->orderItems->sum(function ($item) {
+            return ($item->price * $item->quantity) - $item->discount;
+        });
     }
 
     // Status checks

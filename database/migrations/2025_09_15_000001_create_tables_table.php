@@ -7,6 +7,8 @@ return new class extends Migration {
     public function up(): void {
         Schema::create('tables', function (Blueprint $table) {
             $table->id();
+            $table->string('table_number')->unique();
+            $table->enum('status', ['available', 'occupied', 'reserved', 'maintenance'])->default('available');
             $table->integer('capacity');
             $table->timestamps();
 

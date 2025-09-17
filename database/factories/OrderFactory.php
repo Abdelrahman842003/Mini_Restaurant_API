@@ -16,9 +16,11 @@ class OrderFactory extends Factory
         return [
             'user_id' => User::factory(),
             'reservation_id' => null, // Optional
+            'table_id' => null, // Optional - will be set if needed
             'status' => $this->faker->randomElement(['pending', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled', 'paid']),
             'total_amount' => $this->faker->randomFloat(2, 20, 500),
             'notes' => $this->faker->optional()->sentence(),
+            'special_instructions' => $this->faker->optional()->sentence(),
         ];
     }
 

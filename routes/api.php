@@ -15,9 +15,15 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-// Public authentication routes
+// Public authentication routes (outside v1 prefix)
 Route::post('auth/login', [AuthController::class, 'login']);
 Route::post('auth/register', [AuthController::class, 'register']);
+
+// Protected authentication routes (outside v1 prefix)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('auth/logout', [AuthController::class, 'logout']);
+    Route::get('auth/me', [AuthController::class, 'me']);
+});
 
 // Public routes
 Route::prefix('v1')->group(function () {
@@ -33,10 +39,6 @@ Route::prefix('v1')->group(function () {
 
 // Protected routes
 Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
-    // Authentication
-    Route::post('auth/logout', [AuthController::class, 'logout']);
-    Route::get('auth/me', [AuthController::class, 'me']);
-
     // Table Management - Full CRUD for authenticated users
     Route::get('tables/{id}', [TableController::class, 'show']);
     Route::post('tables', [TableController::class, 'store']);
@@ -58,7 +60,6 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
 
     // Payment Processing - Enhanced with Factory Pattern
     Route::post('orders/{order}/pay', [PaymentController::class, 'processPayment']);
-    Route::post('orders/{order}/pay-legacy', [PaymentController::class, 'processLegacyPayment']);
 
     // Payment Status and Invoice
     Route::get('orders/{order}/payment-status', [PaymentController::class, 'getPaymentStatus']);
@@ -75,22 +76,20 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
 
 // Public Payment Callbacks - No authentication required for external services
 Route::prefix('payment')->group(function () {
-    // Universal callback handler for all gateways using Factory Pattern
+    // Universal callback handler for PayPal only
     Route::post('{gateway}/callback', [PaymentCallbackController::class, 'handleCallback']);
 
     // PayPal specific redirect endpoints
     Route::get('paypal/success', [PaymentCallbackController::class, 'paypalSuccess']);
     Route::get('paypal/cancel', [PaymentCallbackController::class, 'paypalCancel']);
-
-    // Paymob specific callback
-    Route::post('paymob/callback', [PaymentCallbackController::class, 'paymobCallback']);
 });
 
 // Public Webhook endpoints - No authentication required for external services
 Route::prefix('webhooks')->group(function () {
-    // Stripe webhook
-    Route::post('stripe', [PaymentCallbackController::class, 'stripeWebhook']);
-
-    // Paymob webhook (alternative endpoint)
-    Route::post('paymob', [PaymentCallbackController::class, 'paymobCallback']);
+    // Reserved for future use
 });
+
+// Test PayPal configuration (only for development)
+if (app()->environment(['local', 'development'])) {
+    require __DIR__ . '/test-paypal.php';
+}

@@ -88,8 +88,3 @@ Route::prefix('payment')->group(function () {
 Route::prefix('webhooks')->group(function () {
     // Reserved for future use
 });
-
-// Test PayPal configuration (only for development)
-if (app()->environment(['local', 'development'])) {
-    require __DIR__ . '/test-paypal.php';
-}

@@ -11,19 +11,44 @@ use Exception;
 class PayPalGateway implements PaymentGatewayInterface
 {
     private PayPalClient $paypal;
+    private bool $testMode = false;
 
     public function __construct()
     {
         $this->paypal = new PayPalClient;
 
-        // Get PayPal configuration
+        // Get PayPal configuration from config file
         $config = config('paypal');
 
-        // Log configuration for debugging (without sensitive data)
-        Log::info('PayPal configuration check', [
-            'mode' => $config['mode'] ?? 'not_set',
-            'has_client_id' => !empty($config['sandbox']['client_id'] ?? '') || !empty($config['live']['client_id'] ?? ''),
-            'has_client_secret' => !empty($config['sandbox']['client_secret'] ?? '') || !empty($config['live']['client_secret'] ?? ''),
+        // Validate that configuration exists
+        if (!$config) {
+            throw new Exception('PayPal configuration not found. Please ensure config/paypal.php exists.');
+        }
+
+        // Validate required configuration based on mode
+        $mode = $config['mode'] ?? 'sandbox';
+        $clientId = $config[$mode]['client_id'] ?? '';
+        $clientSecret = $config[$mode]['client_secret'] ?? '';
+
+        // For development: Allow test mode with mock credentials
+        if ($mode === 'sandbox' && (empty($clientId) || $clientId === 'your_paypal_client_id_here')) {
+            Log::warning('PayPal running in test mode - using mock responses for development');
+            $this->testMode = true;
+            return;
+        }
+
+        if (empty($clientId)) {
+            throw new Exception("PayPal client_id missing from the provided configuration. Please add your application client_id.");
+        }
+
+        if (empty($clientSecret)) {
+            throw new Exception("PayPal client_secret missing from the provided configuration. Please add your application client_secret.");
+        }
+
+        Log::info('PayPal configuration loaded', [
+            'mode' => $mode,
+            'has_client_id' => !empty($clientId),
+            'has_client_secret' => !empty($clientSecret)
         ]);
 
         $this->paypal->setApiCredentials($config);
@@ -34,9 +59,9 @@ class PayPalGateway implements PaymentGatewayInterface
         } catch (Exception $e) {
             Log::error('PayPal initialization failed', [
                 'error' => $e->getMessage(),
-                'config_mode' => $config['mode'] ?? 'unknown'
+                'config_mode' => $mode
             ]);
-            throw new Exception('PayPal configuration error: ' . $e->getMessage());
+            throw new Exception('PayPal initialization failed: ' . $e->getMessage());
         }
     }
 
@@ -47,6 +72,36 @@ class PayPalGateway implements PaymentGatewayInterface
     {
         try {
             $this->validatePaymentData($data);
+
+            // Test mode: Return mock successful response for development
+            if ($this->testMode) {
+                Log::info('PayPal test mode - returning mock successful response');
+
+                $mockOrderId = 'MOCK_ORDER_' . uniqid();
+                $mockApprovalUrl = config('app.url') . '/mock-paypal-approval?token=' . $mockOrderId;
+
+                return [
+                    'success' => true,
+                    'transaction_id' => $mockOrderId,
+                    'approval_url' => $mockApprovalUrl,
+                    'payment_method' => 'paypal',
+                    'amount' => $data['amount'],
+                    'currency' => $data['currency'] ?? 'USD',
+                    'status' => 'created',
+                    'redirect_required' => true,
+                    'paypal_order' => [
+                        'id' => $mockOrderId,
+                        'status' => 'CREATED',
+                        'links' => [
+                            [
+                                'href' => $mockApprovalUrl,
+                                'rel' => 'approve',
+                                'method' => 'GET'
+                            ]
+                        ]
+                    ]
+                ];
+            }
 
             // Log payment creation attempt
             Log::info('Creating PayPal order', [
@@ -78,63 +133,86 @@ class PayPalGateway implements PaymentGatewayInterface
                 ]
             ];
 
-            // Log the order structure for debugging
-            Log::info('PayPal order structure', ['order' => $order]);
+            // Log the order structure being sent to PayPal
+            Log::info('PayPal order request', ['order_structure' => $order]);
 
             $response = $this->paypal->createOrder($order);
 
-            // Log PayPal response
-            Log::info('PayPal createOrder response', [
-                'response_keys' => array_keys($response ?? []),
-                'has_id' => isset($response['id']),
-                'status' => $response['status'] ?? 'unknown'
+            // Enhanced logging of PayPal response
+            Log::info('PayPal API raw response', [
+                'response_type' => gettype($response),
+                'response_content' => $response,
+                'is_array' => is_array($response),
+                'response_keys' => is_array($response) ? array_keys($response) : 'not_array'
             ]);
 
-            if (isset($response['id']) && isset($response['status'])) {
-                // Find approval URL
-                $approvalUrl = null;
-                if (isset($response['links']) && is_array($response['links'])) {
-                    foreach ($response['links'] as $link) {
-                        if (isset($link['rel']) && $link['rel'] === 'approve') {
-                            $approvalUrl = $link['href'];
-                            break;
-                        }
-                    }
-                }
-
-                Log::info('PayPal order created successfully', [
-                    'order_id' => $response['id'],
-                    'status' => $response['status'],
-                    'approval_url' => $approvalUrl ? 'found' : 'not_found'
-                ]);
-
-                return [
-                    'success' => true,
-                    'transaction_id' => $response['id'],
-                    'approval_url' => $approvalUrl,
-                    'payment_method' => 'paypal',
-                    'amount' => $data['amount'],
-                    'currency' => $data['currency'] ?? 'USD',
-                    'status' => 'created',
-                    'redirect_required' => true,
-                    'paypal_order' => $response
-                ];
+            // Enhanced response validation with better error reporting
+            if (!$response) {
+                throw new Exception('PayPal API returned null response. Check your PayPal credentials.');
             }
 
-            // Log detailed error if order creation failed
-            Log::error('PayPal order creation failed - invalid response', [
-                'response' => $response,
-                'expected_id' => 'missing',
-                'received_keys' => array_keys($response ?? [])
+            if (!is_array($response)) {
+                throw new Exception('PayPal API returned non-array response: ' . gettype($response) . ' - ' . print_r($response, true));
+            }
+
+            // Check for PayPal API error response
+            if (isset($response['error'])) {
+                $errorMessage = 'PayPal API Error: ' . ($response['error']['message'] ?? 'Unknown error');
+                Log::error('PayPal API error response', $response);
+                throw new Exception($errorMessage);
+            }
+
+            if (!isset($response['id']) || !isset($response['status'])) {
+                Log::error('PayPal order creation failed - missing required fields', [
+                    'response' => $response,
+                    'required_fields' => ['id', 'status'],
+                    'received_keys' => array_keys($response)
+                ]);
+                throw new Exception('PayPal order creation failed - missing id or status in response');
+            }
+
+            // Find approval URL
+            $approvalUrl = null;
+            if (isset($response['links']) && is_array($response['links'])) {
+                foreach ($response['links'] as $link) {
+                    if (isset($link['rel']) && $link['rel'] === 'approve') {
+                        $approvalUrl = $link['href'];
+                        break;
+                    }
+                }
+            }
+
+            if (!$approvalUrl) {
+                Log::error('PayPal approval URL not found', [
+                    'response_links' => $response['links'] ?? 'no_links',
+                    'full_response' => $response
+                ]);
+                throw new Exception('PayPal approval URL not found in response');
+            }
+
+            Log::info('PayPal order created successfully', [
+                'order_id' => $response['id'],
+                'status' => $response['status'],
+                'has_approval_url' => !empty($approvalUrl)
             ]);
 
-            throw new Exception('PayPal order creation failed - invalid response from PayPal API');
+            return [
+                'success' => true,
+                'transaction_id' => $response['id'],
+                'approval_url' => $approvalUrl,
+                'payment_method' => 'paypal',
+                'amount' => $data['amount'],
+                'currency' => $data['currency'] ?? 'USD',
+                'status' => 'created',
+                'redirect_required' => true,
+                'paypal_order' => $response
+            ];
 
         } catch (Exception $e) {
             Log::error('PayPal payment creation exception', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'data' => $data
+                'data' => collect($data)->except(['client_id', 'client_secret'])->toArray() // Hide sensitive data
             ]);
 
             return [
@@ -262,6 +340,10 @@ class PayPalGateway implements PaymentGatewayInterface
             throw new Exception('Invalid amount provided: ' . ($paymentData['amount'] ?? 'not_set'));
         }
 
+        if ($paymentData['amount'] > 10000) {
+            throw new Exception('Amount exceeds maximum limit for PayPal payments');
+        }
+
         $supportedCurrencies = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY'];
         $currency = $paymentData['currency'] ?? 'USD';
 
@@ -323,7 +405,7 @@ class PayPalGateway implements PaymentGatewayInterface
                 ];
             }
 
-            $response = $this->paypal->refundCapturedPayment($captureId, $refundData, 'Refund requested');
+            $response = $this->paypal->refundCapturedPayment($captureId, 'Refund requested', $refundData ?? []);
 
             if (isset($response['status']) && $response['status'] === 'COMPLETED') {
                 return [

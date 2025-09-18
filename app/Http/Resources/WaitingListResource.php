@@ -16,9 +16,19 @@ class WaitingListResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'user' => new UserResource($this->whenLoaded('user')),
+            'user_id' => $this->user_id,
+            'user' => $this->when($this->relationLoaded('user'), function () {
+                return [
+                    'id' => $this->user->id,
+                    'name' => $this->user->name,
+                    'email' => $this->user->email,
+                ];
+            }),
             'number_of_guests' => $this->number_of_guests,
-            'created_at' => $this->created_at,
+            'position' => $this->position,
+            'estimated_wait_time' => $this->estimated_wait_time,
+            'created_at' => $this->created_at?->toISOString(),
+            'updated_at' => $this->updated_at?->toISOString(),
         ];
     }
 }

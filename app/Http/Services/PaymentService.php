@@ -44,24 +44,35 @@ class PaymentService
     }
 
     /**
-     * Get available payment gateways - PayPal only
+     * Get available payment gateways with enhanced information
      */
     public function getAvailableGateways(): array
     {
-        return [
-            [
-                'id' => 'paypal',
-                'name' => 'PayPal',
-                'description' => 'Pay securely with PayPal worldwide',
-                'type' => 'redirect',
-                'icon' => 'paypal-icon.png',
-                'currencies' => ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY']
-            ]
-        ];
+        $gateways = [];
+        $supportedGateways = PaymentGatewayFactory::getSupportedGateways();
+
+        foreach ($supportedGateways as $gatewayName) {
+            try {
+                $gateway = PaymentGatewayFactory::make($gatewayName);
+                $gateways[] = [
+                    'id' => $gatewayName,
+                    'name' => ucfirst($gatewayName),
+                    'description' => "Pay securely with {$gatewayName}",
+                    'type' => 'redirect',
+                    'supported_methods' => $gateway->getSupportedPaymentMethods(),
+                    'supported_currencies' => $gateway->getSupportedCurrencies(),
+                    'limits' => $gateway->getPaymentLimits()
+                ];
+            } catch (Exception $e) {
+                Log::warning("Failed to load gateway info for {$gatewayName}", ['error' => $e->getMessage()]);
+            }
+        }
+
+        return $gateways;
     }
 
     /**
-     * Process payment with specific gateway - ONLY creates payment intent, does NOT update order status
+     * Process payment with specific gateway - creates payment intent
      */
     public function processPaymentWithGateway(Order $order, int $paymentOption, string $gateway, array $paymentData = []): array
     {
@@ -94,12 +105,12 @@ class PaymentService
                     'payment_status' => 'pending'
                 ]);
 
-                // Create payment intent with gateway (NO status updates here)
+                // Create payment intent with gateway
                 $gatewayResult = $this->createPaymentIntent($gateway, $calculations['final_amount'], $paymentData, $order, $invoice);
 
-                // Update invoice with payment details only
+                // Update invoice with payment details
                 $invoice->update([
-                    'transaction_id' => $gatewayResult['transaction_id'] ?? null,
+                    'transaction_id' => $gatewayResult['transaction_id'] ?? $gatewayResult['payment_intent_id'] ?? null,
                     'payment_details' => json_encode($gatewayResult)
                 ]);
 
@@ -107,8 +118,7 @@ class PaymentService
                     'gateway' => $gateway,
                     'order_id' => $order->id,
                     'invoice_id' => $invoice->id,
-                    'transaction_id' => $gatewayResult['transaction_id'] ?? null,
-                    'redirect_required' => $gatewayResult['redirect_required'] ?? false
+                    'transaction_id' => $gatewayResult['transaction_id'] ?? null
                 ]);
 
                 return [
@@ -128,47 +138,29 @@ class PaymentService
     }
 
     /**
-     * Create payment intent with gateway (renamed from processWithGateway for clarity)
+     * Create payment intent with gateway
      */
     private function createPaymentIntent(string $gateway, float $amount, array $paymentData, Order $order, Invoice $invoice): array
     {
         try {
-            // Use Factory Pattern to create the appropriate gateway
             $paymentGateway = PaymentGatewayFactory::make($gateway);
 
-            // Prepare payment data with order context
+            // Prepare payment data
             $gatewayPaymentData = array_merge($paymentData, [
                 'amount' => $amount,
+                'currency' => 'USD',
                 'description' => "Restaurant Order #{$order->id} Payment",
                 'invoice_number' => $invoice->id,
+                'return_url' => config('app.url') . "/api/payment/{$gateway}/success",
+                'cancel_url' => config('app.url') . "/api/payment/{$gateway}/cancel",
                 'metadata' => [
                     'order_id' => $order->id,
                     'invoice_id' => $invoice->id,
                     'customer_id' => $order->user_id
-                ],
-                'customer' => [
-                    'first_name' => $order->user->name ?? 'Customer',
-                    'email' => $order->user->email ?? 'customer@example.com',
-                    'phone' => $order->user->phone ?? '+201000000000'
                 ]
             ]);
 
-            // Add gateway-specific URLs
-            if ($gateway === 'paypal') {
-                $gatewayPaymentData['return_url'] = config('app.url') . '/api/payment/paypal/success';
-                $gatewayPaymentData['cancel_url'] = config('app.url') . '/api/payment/paypal/cancel';
-            }
-
-            // Create payment using the gateway
-            $result = $paymentGateway->createPayment($gatewayPaymentData);
-
-            Log::info('Gateway payment intent created', [
-                'gateway' => $gateway,
-                'success' => $result['success'],
-                'transaction_id' => $result['transaction_id'] ?? null
-            ]);
-
-            return $result;
+            return $paymentGateway->createPaymentIntent($gatewayPaymentData);
 
         } catch (Exception $e) {
             Log::error('Gateway payment intent creation failed', [
@@ -178,133 +170,113 @@ class PaymentService
 
             return [
                 'success' => false,
-                'error' => $e->getMessage(),
-                'payment_method' => $gateway
+                'error' => $e->getMessage()
             ];
         }
     }
 
     /**
-     * Handle payment callback and capture payment - THIS is where status updates happen
+     * Handle payment callback
      */
     public function handlePaymentCallback(string $gateway, $request): array
     {
         try {
-            // Use Factory Pattern to get the appropriate gateway
             $paymentGateway = PaymentGatewayFactory::make($gateway);
-
-            // Handle callback and capture payment using the gateway
-            $result = $paymentGateway->handleCallback($request);
+            $result = $paymentGateway->callBack($request);
 
             Log::info('Payment callback handled', [
                 'gateway' => $gateway,
-                'success' => $result['success'],
-                'transaction_id' => $result['transaction_id'] ?? null,
-                'status' => $result['status'] ?? 'unknown'
+                'success' => $result
+            ]);
+
+            return ['success' => $result];
+
+        } catch (Exception $e) {
+            Log::error('Payment callback failed', [
+                'gateway' => $gateway,
+                'error' => $e->getMessage()
+            ]);
+
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Handle webhook notifications
+     */
+    public function handleWebhook(string $gateway, $request): array
+    {
+        try {
+            $paymentGateway = PaymentGatewayFactory::make($gateway);
+
+            // Validate webhook signature
+            if (!$paymentGateway->validateWebhookSignature($request)) {
+                throw new Exception('Invalid webhook signature');
+            }
+
+            // Handle the webhook
+            $result = $paymentGateway->handleWebhook($request);
+
+            Log::info('Webhook processed', [
+                'gateway' => $gateway,
+                'event_type' => $result['event_type'] ?? 'unknown'
             ]);
 
             return $result;
 
         } catch (Exception $e) {
-            Log::error('Payment callback handling failed', [
+            Log::error('Webhook processing failed', [
                 'gateway' => $gateway,
+                'error' => $e->getMessage()
+            ]);
+
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Get payment status
+     */
+    public function getPaymentStatus(string $gateway, string $transactionId): array
+    {
+        try {
+            $paymentGateway = PaymentGatewayFactory::make($gateway);
+            return $paymentGateway->getPaymentStatus($transactionId);
+
+        } catch (Exception $e) {
+            Log::error('Payment status check failed', [
+                'gateway' => $gateway,
+                'transaction_id' => $transactionId,
                 'error' => $e->getMessage()
             ]);
 
             return [
                 'success' => false,
-                'error' => $e->getMessage(),
-                'payment_method' => $gateway
+                'error' => $e->getMessage()
             ];
         }
     }
 
     /**
-     * Update payment status after successful callback - called by PaymentCallbackController
+     * Process refund
      */
-    public function updatePaymentStatus(string $transactionId, string $status, array $paymentDetails = []): bool
-    {
-        return DB::transaction(function () use ($transactionId, $status, $paymentDetails) {
-            try {
-                // Find invoice by transaction ID
-                $invoice = Invoice::where('transaction_id', $transactionId)->first();
-
-                if (!$invoice) {
-                    Log::warning('Invoice not found for transaction', ['transaction_id' => $transactionId]);
-                    return false;
-                }
-
-                $paymentStatus = match ($status) {
-                    'completed', 'COMPLETED' => 'completed',
-                    'failed', 'FAILED' => 'failed',
-                    'cancelled', 'CANCELLED' => 'cancelled',
-                    default => 'pending'
-                };
-
-                $orderStatus = match ($status) {
-                    'completed', 'COMPLETED' => 'paid',
-                    'failed', 'FAILED' => 'payment_failed',
-                    'cancelled', 'CANCELLED' => 'cancelled',
-                    default => 'pending'
-                };
-
-                // Update invoice
-                $invoice->update([
-                    'payment_status' => $paymentStatus,
-                    'payment_details' => json_encode(array_merge(
-                        json_decode($invoice->payment_details, true) ?? [],
-                        [
-                            'callback_result' => $paymentDetails,
-                            'captured_at' => now()->toISOString()
-                        ]
-                    ))
-                ]);
-
-                // Update order
-                $invoice->order->update(['status' => $orderStatus]);
-
-                Log::info('Payment status updated successfully', [
-                    'transaction_id' => $transactionId,
-                    'invoice_id' => $invoice->id,
-                    'order_id' => $invoice->order_id,
-                    'payment_status' => $paymentStatus,
-                    'order_status' => $orderStatus
-                ]);
-
-                return true;
-
-            } catch (Exception $e) {
-                Log::error('Failed to update payment status', [
-                    'transaction_id' => $transactionId,
-                    'error' => $e->getMessage()
-                ]);
-                return false;
-            }
-        });
-    }
-
-    /**
-     * Verify payment status using Factory Pattern
-     */
-    public function verifyPaymentStatus(string $gateway, string $transactionId): array
+    public function processRefund(string $gateway, string $transactionId, float $amount, ?string $reason = null): array
     {
         try {
-            // Use Factory Pattern to get the appropriate gateway
             $paymentGateway = PaymentGatewayFactory::make($gateway);
+            $result = $paymentGateway->processRefund($transactionId, $amount, $reason);
 
-            // Verify payment using the gateway
-            $result = $paymentGateway->verifyPayment($transactionId);
-
-            Log::info('Payment verification completed', [
+            Log::info('Refund processed', [
                 'gateway' => $gateway,
                 'transaction_id' => $transactionId,
-                'verified' => $result['verified'] ?? false
+                'amount' => $amount,
+                'success' => $result['success'] ?? false
             ]);
 
             return $result;
 
         } catch (Exception $e) {
-            Log::error('Payment verification failed', [
+            Log::error('Refund processing failed', [
                 'gateway' => $gateway,
                 'transaction_id' => $transactionId,
                 'error' => $e->getMessage()
@@ -312,8 +284,79 @@ class PaymentService
 
             return [
                 'success' => false,
-                'error' => $e->getMessage(),
-                'verified' => false
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Cancel payment
+     */
+    public function cancelPayment(string $gateway, string $transactionId): array
+    {
+        try {
+            $paymentGateway = PaymentGatewayFactory::make($gateway);
+            $result = $paymentGateway->cancelPayment($transactionId);
+
+            Log::info('Payment cancelled', [
+                'gateway' => $gateway,
+                'transaction_id' => $transactionId,
+                'success' => $result['success'] ?? false
+            ]);
+
+            return $result;
+
+        } catch (Exception $e) {
+            Log::error('Payment cancellation failed', [
+                'gateway' => $gateway,
+                'transaction_id' => $transactionId,
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Calculate transaction fees
+     */
+    public function calculateTransactionFees(string $gateway, float $amount, string $currency = 'USD'): array
+    {
+        try {
+            $paymentGateway = PaymentGatewayFactory::make($gateway);
+            return $paymentGateway->calculateTransactionFees($amount, $currency);
+
+        } catch (Exception $e) {
+            Log::error('Fee calculation failed', [
+                'gateway' => $gateway,
+                'amount' => $amount,
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Test gateway connection
+     */
+    public function testGatewayConnection(string $gateway): array
+    {
+        try {
+            $paymentGateway = PaymentGatewayFactory::make($gateway);
+            return $paymentGateway->testConnection();
+
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => "Gateway connection test failed: {$e->getMessage()}",
+                'gateway' => $gateway
             ];
         }
     }

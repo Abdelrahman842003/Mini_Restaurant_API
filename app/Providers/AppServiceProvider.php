@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Http\Interfaces\InvoiceRepositoryInterface;
 use App\Http\Interfaces\MenuItemRepositoryInterface;
 use App\Http\Interfaces\OrderRepositoryInterface;
+use App\Http\Interfaces\PaymentGatewayInterface;
 use App\Http\Interfaces\ReservationRepositoryInterface;
 use App\Http\Interfaces\TableRepositoryInterface;
 use App\Http\Interfaces\UserRepositoryInterface;
@@ -16,6 +17,7 @@ use App\Http\Repositories\ReservationRepository;
 use App\Http\Repositories\TableRepository;
 use App\Http\Repositories\UserRepository;
 use App\Http\Repositories\WaitingListRepository;
+use App\Http\Services\PaymentGateways\PaypalPaymentService;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -33,6 +35,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(OrderRepositoryInterface::class, OrderRepository::class);
         $this->app->bind(InvoiceRepositoryInterface::class, InvoiceRepository::class);
         $this->app->bind(WaitingListRepositoryInterface::class, WaitingListRepository::class);
+
+        // Bind payment gateway interface to PayPal implementation
+        $this->app->bind(PaymentGatewayInterface::class, PaypalPaymentService::class);
     }
 
     /**

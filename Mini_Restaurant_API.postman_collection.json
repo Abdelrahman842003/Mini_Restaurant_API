@@ -1,6 +1,6 @@
 {
 	"info": {
-		"name": "Mini Restaurant Reservation System API v2.1",
+		"name": "Mini Restaurant Reservation System API ",
 		"description": "Complete API collection for Mini Restaurant Reservation System - Apps Square Task\n\n🚀 NEW in v2.1: Simplified Payment System with PayPal Only\n\nThis collection includes all endpoints with sample data for testing:\n- Authentication (Register, Login, Logout)\n- Menu Management\n- Table Availability & Reservations\n- Order Management\n- 💳 Payment Processing (PayPal Only)\n- Waiting List Management\n- 🔄 Payment Callbacks & Webhooks\n- ✅ Payment Verification\n\nMake sure to:\n1. Start with Authentication to get the token\n2. Update the {{token}} variable after login\n3. Follow the testing sequence in order\n4. Set up PayPal credentials in environment variables\n\n📚 For detailed payment system documentation, see: PAYMENT_SYSTEM_GUIDE.md",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},

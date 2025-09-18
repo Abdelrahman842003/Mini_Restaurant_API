@@ -61,30 +61,57 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     // Payment Processing - Enhanced with Factory Pattern
     Route::post('orders/{order}/pay', [PaymentController::class, 'processPayment']);
 
+    // Order Payment Status - Get payment status for specific order
+    Route::get('orders/{order}/payment-status', [PaymentController::class, 'getOrderPaymentStatus']);
+
+    // Enhanced Payment Management Routes
+    Route::get('payment/{gateway}/status/{transactionId}', [PaymentController::class, 'getPaymentStatus']);
+    Route::post('payment/refund', [PaymentController::class, 'processRefund']);
+    Route::post('payment/cancel', [PaymentController::class, 'cancelPayment']);
+    Route::post('payment/calculate-fees', [PaymentController::class, 'calculateFees']);
+    Route::post('payment/test-gateway', [PaymentController::class, 'testGateway']);
+
     // Payment Status and Invoice
-    Route::get('orders/{order}/payment-status', [PaymentController::class, 'getPaymentStatus']);
     Route::get('invoices/{invoice}', [PaymentController::class, 'getInvoice']);
 
     // Payment Verification - Universal endpoint for all gateways
     Route::get('payment/{gateway}/verify/{transactionId}', [PaymentCallbackController::class, 'verifyPayment']);
 
     // Waiting List
-    Route::post('waiting-list', [WaitingListController::class, 'join']);
+    Route::post('waiting-list', [WaitingListController::class, 'store']);
     Route::get('waiting-list', [WaitingListController::class, 'index']);
-    Route::delete('waiting-list/{id}', [WaitingListController::class, 'leave']);
+    Route::delete('waiting-list/{id}', [WaitingListController::class, 'destroy']);
 });
 
 // Public Payment Callbacks - No authentication required for external services
 Route::prefix('payment')->group(function () {
-    // Universal callback handler for PayPal only
+    // Universal callback handler for all gateways
     Route::post('{gateway}/callback', [PaymentCallbackController::class, 'handleCallback']);
+    Route::get('{gateway}/callback', [PaymentCallbackController::class, 'handleCallback']);
 
     // PayPal specific redirect endpoints
     Route::get('paypal/success', [PaymentCallbackController::class, 'paypalSuccess']);
     Route::get('paypal/cancel', [PaymentCallbackController::class, 'paypalCancel']);
+
+    // Generic success/failure routes
+    Route::get('success', function() {
+        return response()->json(['success' => true, 'message' => 'Payment completed successfully']);
+    })->name('payment.success');
+
+    Route::get('failed', function() {
+        return response()->json(['success' => false, 'message' => 'Payment failed']);
+    })->name('payment.failed');
+
+    Route::get('cancel', function() {
+        return response()->json(['success' => false, 'message' => 'Payment cancelled']);
+    })->name('payment.cancel');
 });
 
 // Public Webhook endpoints - No authentication required for external services
 Route::prefix('webhooks')->group(function () {
-    // Reserved for future use
+    // Universal webhook handler for all payment gateways
+    Route::post('{gateway}', [PaymentController::class, 'handleWebhook']);
+
+    // Gateway-specific webhook endpoints
+    Route::post('paypal', [PaymentController::class, 'handleWebhook']);
 });

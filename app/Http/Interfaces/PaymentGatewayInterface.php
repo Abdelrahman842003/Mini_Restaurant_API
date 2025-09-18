@@ -7,41 +7,26 @@ use Illuminate\Http\Request;
 interface PaymentGatewayInterface
 {
     /**
-     * Create a payment transaction
+     * Send payment request to gateway
      *
-     * @param array $data Payment data including amount, customer info, etc.
-     * @return array Response containing payment details and redirect URL if needed
+     * @param Request $request
+     * @return array
      */
-    public function createPayment(array $data): array;
+    public function sendPayment(Request $request): array;
 
     /**
-     * Handle payment callback/webhook from gateway
+     * Handle payment callback from gateway
      *
-     * @param Request $request The callback request from payment gateway
-     * @return array Response containing payment status and transaction details
+     * @param Request $request
+     * @return bool
      */
-    public function handleCallback(Request $request): array;
-
-    /**
-     * Verify payment status directly from gateway API
-     *
-     * @param string $transactionId The transaction ID to verify
-     * @return array Payment verification result
-     */
-    public function verifyPayment(string $transactionId): array;
-
-    /**
-     * Validate payment data before processing
-     *
-     * @param array $paymentData The payment data to validate
-     * @return bool True if valid, throws exception if invalid
-     */
-    public function validatePaymentData(array $paymentData): bool;
+    public function callBack(Request $request): bool;
 
     /**
      * Get gateway name
      *
-     * @return string Gateway identifier
+     * @return string
      */
     public function getGatewayName(): string;
 }
+

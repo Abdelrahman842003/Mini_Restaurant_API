@@ -9,13 +9,14 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->integer('number_of_guests');
-            $table->timestamp('created_at')->useCurrent();
+            $table->timestamps(); // This creates both created_at and updated_at
 
             // Add indexes for performance
             $table->index('created_at');
             $table->index(['user_id', 'created_at']);
         });
     }
+
     public function down(): void {
         Schema::dropIfExists('waiting_list_entries');
     }
